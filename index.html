@@ -3,51 +3,40 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Web Avatar - Final UI & Pose</title>
+    <title>Web Avatar - Final Positioning</title>
     <style>
         body { margin: 0; overflow: hidden; background-color: #f0e6dc; font-family: 'Segoe UI', sans-serif; }
         #canvas-container { width: 100vw; height: 100vh; display: block; }
+        
         #ui-layer {
             position: absolute; bottom: 20px; left: 50%; transform: translateX(-50%);
             text-align: center; width: 100%; pointer-events: none;
         }
         #subtitle {
-            font-size: 22px; color: #333; background: rgba(255, 255, 255, 0.9);
-            padding: 10px 20px; border-radius: 15px; display: inline-block; margin-bottom: 10px;
+            font-size: 24px; color: #333; background: rgba(255, 255, 255, 0.9);
+            padding: 10px 25px; border-radius: 15px; display: inline-block; margin-bottom: 10px;
         }
-        #lab {
-            position: absolute; top: 10px; left: 10px; background: white; padding: 15px;
-            border-radius: 10px; pointer-events: auto; font-size: 12px; box-shadow: 0 0 10px rgba(0,0,0,0.2);
-        }
-        .slider-group { margin-bottom: 8px; }
-        input { width: 120px; cursor: pointer; }
-        .controls { pointer-events: auto; }
-        button { padding: 10px 20px; cursor: pointer; background: #4CAF50; color: white; border: none; border-radius: 5px; font-weight: bold; }
-        #mic-btn.listening { background: #f44336; }
+        
+        .controls { pointer-events: auto; background: rgba(255, 255, 255, 0.9); padding: 12px; border-radius: 12px; display: inline-block; }
+        select, button { font-size: 16px; padding: 10px 20px; margin: 5px; border-radius: 8px; cursor: pointer; border: 1px solid #ccc;}
+        #mic-btn { background-color: #4CAF50; color: white; border: none; font-weight: bold;}
+        #mic-btn.listening { background-color: #f44336; animation: pulse 1.5s infinite; }
+        
+        @keyframes pulse { 0% { transform: scale(1); } 50% { transform: scale(1.05); } 100% { transform: scale(1); } }
     </style>
 </head>
 <body>
 
-    <div id="lab">
-        <b>🛠️ Τελική Ρύθμιση Ώμων</b><br>
-        <p style="margin:5px 0; color:#666;">Οι τιμές σου με μεγαλύτερο άνοιγμα (Z).</p>
-        <div class="slider-group">Κλίση (X): <input type="range" id="x" min="-180" max="180" value="-36"> <span id="vx">-36</span></div>
-        <div class="slider-group">Στροφή (Y): <input type="range" id="y" min="-180" max="180" value="-41"> <span id="vy">-41</span></div>
-        <div class="slider-group">Άνοιγμα (Z): <input type="range" id="z" min="-180" max="180" value="-80"> <span id="vz">-80</span></div>
-        <hr>
-        <button onclick="copyValues()" style="width:100%; background:#2196F3;">Αποθήκευση Τιμών</button>
-    </div>
-
     <div id="canvas-container"></div>
     
     <div id="ui-layer">
-        <div id="subtitle">Σύστημα Έτοιμο</div><br>
+        <div id="subtitle">Το σύστημα φορτώνει...</div><br>
         <div class="controls">
-            <select id="avatar-select" onchange="loadAvatar(this.value)" style="padding:10px; border-radius:5px;">
+            <select id="avatar-select" onchange="loadAvatar(this.value)">
                 <option value="rhea.glb">Avatar: Rhea</option>
                 <option value="titan.glb">Avatar: Titan</option>
             </select>
-            <button id="mic-btn">🎙️ Μικρόφωνο</button>
+            <button id="mic-btn">🎙️ Ενεργοποίηση</button>
         </div>
     </div>
 
@@ -60,9 +49,10 @@
         const scene = new THREE.Scene();
         scene.background = new THREE.Color(0xf0e6dc);
         
-        // ΚΑΜΕΡΑ: Ρυθμισμένη για να βλέπει το στήθος χωρίς ροδέλα
+        // --- 1. ΔΙΟΡΘΩΣΗ ΚΑΜΕΡΑΣ ΓΙΑ ΚΕΝΤΡΑΡΙΣΜΑ ---
+        // Ρυθμίσαμε το ύψος (1.4) και την απόσταση (4.5) για να φαίνεται το αβατάρ σωστά.
         const camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 100);
-        camera.position.set(0, 1.2, 3.8); 
+        camera.position.set(0, 1.4, 4.5); 
 
         const renderer = new THREE.WebGLRenderer({ antialias: true });
         renderer.setSize(window.innerWidth, window.innerHeight);
@@ -70,24 +60,26 @@
         document.getElementById('canvas-container').appendChild(renderer.domElement);
 
         const controls = new THREE.OrbitControls(camera, renderer.domElement);
-        controls.target.set(0, 1.2, 0); // Εστίαση στο ύψος του στήθους
+        // Το κέντρο εστίασης ανέβηκε στο στήθος (1.2)
+        controls.target.set(0, 1.2, 0); 
         controls.update();
 
         scene.add(new THREE.AmbientLight(0xffffff, 0.8));
-        const light = new THREE.DirectionalLight(0xffffff, 0.5);
-        light.position.set(5, 10, 5);
-        scene.add(light);
+        const dirLight = new THREE.DirectionalLight(0xffffff, 0.5);
+        dirLight.position.set(5, 10, 5);
+        scene.add(dirLight);
 
-        let currentModel = null, bones = {}, is_busy = false;
+        let currentModel = null, bones = {}, is_busy = false, gesture_queue = [], last_activity_time = Date.now();
         const deg = (d) => d * (Math.PI / 180);
 
         function loadAvatar(file) {
             if (currentModel) scene.remove(currentModel);
+            bones = {};
             new THREE.GLTFLoader().load(file, (gltf) => {
                 currentModel = gltf.scene;
-                // ΤΟΠΟΘΕΤΗΣΗ: Κατεβαίνει για να είναι κέντρο
-                currentModel.position.set(0, -1.8, 0); 
-                currentModel.scale.set(1.2, 1.2, 1.2); 
+                // ΔΙΟΡΘΩΣΗ: Τοποθέτηση του μοντέλου vertically στο κέντρο
+                currentModel.position.set(0, -1.0, 0); 
+                currentModel.scale.set(1.1, 1.1, 1.1); 
                 scene.add(currentModel);
 
                 currentModel.traverse(n => {
@@ -100,59 +92,74 @@
                         if (b.endsWith('leftforearm')) bones.l_elbow = n;
                     }
                 });
-                applyPose();
+                // Ενεργοποίηση της σωστής A-pose αμέσως
+                setup_a_pose(0.1);
+                document.getElementById('subtitle').innerText = "Έτοιμος! Πες 'Γεια'.";
             });
         }
 
-        function applyPose() {
+        // --- 2. ΔΙΟΡΘΩΣΗ ΠΟΖΑΣ (A-POSE) ΜΕ QUATERNION ---
+        // Σταματάμε να χρησιμοποιούμε μοίρες (X,Y,Z) που στρίβουν ανάποδα.
+        // Χρησιμοποιούμε απευθείας Quaternion για να "αναγκάσουμε" τα χέρια να πέσουν φυσιολογικά κάτω στα πλάγια.
+        function setup_a_pose(speed = 0.5) {
             if (!bones.r_shoulder) return;
-            const rx = parseFloat(document.getElementById('x').value);
-            const ry = parseFloat(document.getElementById('y').value);
-            const rz = parseFloat(document.getElementById('z').value);
+            // Καθαρή A-pose για το δεξί χέρι (Παρακάμπτει το μπέρδεμα των αξόνων)
+            gsap.to(bones.r_shoulder.quaternion, { x: 0.4, y: 0, z: -0.6, w: 0.7, duration: speed });
+            // Καθαρή A-pose για το αριστερό χέρι (Mirror)
+            gsap.to(bones.l_shoulder.quaternion, { x: 0.4, y: 0, z: 0.6, w: 0.7, duration: speed });
             
-            document.getElementById('vx').innerText = rx;
-            document.getElementById('vy').innerText = ry;
-            document.getElementById('vz').innerText = rz;
-
-            // Σειρά περιστροφής YXZ (Ursina style)
-            bones.r_shoulder.rotation.order = 'YXZ';
-            bones.l_shoulder.rotation.order = 'YXZ';
-            
-            bones.r_shoulder.rotation.set(deg(rx), deg(ry), deg(rz));
-            bones.l_shoulder.rotation.set(deg(rx), deg(-ry), deg(-rz));
+            // Αγκώνες ίσιοι
+            if (bones.r_elbow) gsap.to(bones.r_elbow.rotation, { x: 0, y: 0, z: 0, duration: speed });
+            if (bones.l_elbow) gsap.to(bones.l_elbow.rotation, { x: 0, y: 0, z: 0, duration: speed });
         }
 
-        ['x','y','z'].forEach(id => document.getElementById(id).addEventListener('input', applyPose));
-
-        function copyValues() {
-            const val = `X: ${document.getElementById('x').value}, Y: ${document.getElementById('y').value}, Z: ${document.getElementById('z').value}`;
-            alert("Τέλειες τιμές! Στείλε μου τες: " + val);
+        function finalize_gesture() {
+            last_activity_time = Date.now();
+            invoke(() => { is_busy = false; }, 0.4);
         }
 
-        // --- ΚΙΝΗΣΕΙΣ ---
-        function gesture_kalimera() {
-            is_busy = true;
-            gsap.to(bones.r_shoulder.rotation, { x: deg(-20), y: deg(20), z: deg(-30), duration: 0.5 });
-            setTimeout(() => { applyPose(); is_busy = false; }, 1200);
+        // --- 3. ΚΙΝΗΣΕΙΣ ---
+        // Χρησιμοποιούμε απλό hprInterval (Y,X,Z) για τις κινήσεις, τώρα που η βάση (A-pose) είναι σωστή.
+        function hprInterval(joint, v1, v2, v3, duration) {
+            if (joint) gsap.to(joint.rotation, {x: deg(v1), y: deg(v2), z: deg(v3), duration: duration, ease: "power1.inOut"});
         }
+        function invoke(func, delay_sec) { setTimeout(func, delay_sec * 1000); }
+
+        function gesture_geia() {
+            setup_a_pose(0.2); is_busy = true;
+            // Σηκώνει το χέρι μπροστά και πλάι
+            hprInterval(bones.r_shoulder, 20, 50, -40, 0.4);
+            setTimeout(() => { wave_action(4); }, 500);
+        }
+        
+        function wave_action(count) {
+            if (count <= 0) { finalize_gesture(); return; }
+            hprInterval(bones.r_shoulder, 20, 50, (count%2===0?-60:-20), 0.2);
+            setTimeout(() => wave_action(count-1), 250);
+        }
+
+        // --- ΜΗΧΑΝΙΣΜΟΣ ΟΥΡΑΣ ΚΑΙ ΦΩΝΗΣ ---
+        setInterval(() => {
+            if (!is_busy && gesture_queue.length > 0) {
+                let word = gesture_queue.shift();
+                if (word.includes("γεια")) gesture_geia();
+            }
+            if (!is_busy && Date.now() - last_activity_time > 4000) setup_a_pose(1.0);
+        }, 100);
 
         const micBtn = document.getElementById('mic-btn');
-        let rec = new (window.webkitSpeechRecognition || window.SpeechRecognition)();
-        rec.lang = 'el-GR'; rec.continuous = true;
-        rec.onresult = (e) => {
+        let recognition = new (window.webkitSpeechRecognition || window.SpeechRecognition)();
+        recognition.lang = 'el-GR'; recognition.continuous = true;
+        recognition.onresult = (e) => {
             const t = e.results[e.results.length-1][0].transcript.toLowerCase();
             document.getElementById('subtitle').innerText = "Είπες: " + t;
-            if (t.includes("καλημέρα")) gesture_kalimera();
+            t.split(" ").forEach(w => gesture_queue.push(w));
+            last_activity_time = Date.now();
         };
-        
-        micBtn.onclick = () => { 
-            rec.start(); 
-            micBtn.classList.add('listening');
-            micBtn.innerText = "🛑 Ακούω...";
-        };
+        micBtn.onclick = () => { recognition.start(); micBtn.classList.add('listening'); };
 
         loadAvatar('rhea.glb');
-        function animate() { requestAnimationFrame(animate); renderer.render(scene, camera); }
+        function animate() { requestAnimationFrame(animate); controls.update(); renderer.render(scene, camera); }
         animate();
     </script>
 </body>
