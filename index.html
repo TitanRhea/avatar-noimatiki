@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Web Avatar - Center & Pose Fix</title>
+    <title>Web Avatar - Final UI & Pose</title>
     <style>
         body { margin: 0; overflow: hidden; background-color: #f0e6dc; font-family: 'Segoe UI', sans-serif; }
         #canvas-container { width: 100vw; height: 100vh; display: block; }
@@ -29,19 +29,19 @@
 <body>
 
     <div id="lab">
-        <b>🛠️ Διόρθωση Ώμων (Live)</b><br>
-        <p style="margin:5px 0; color:#666;">Κούνα τα sliders μέχρι τα χέρια<br>να έρθουν στη σωστή A-Pose.</p>
-        <div class="slider-group">Κλίση (X): <input type="range" id="x" min="-180" max="180" value="0"> <span id="vx">0</span></div>
-        <div class="slider-group">Στροφή (Y): <input type="range" id="y" min="-180" max="180" value="0"> <span id="vy">0</span></div>
-        <div class="slider-group">Άνοιγμα (Z): <input type="range" id="z" min="-180" max="180" value="-85"> <span id="vz">-85</span></div>
+        <b>🛠️ Τελική Ρύθμιση Ώμων</b><br>
+        <p style="margin:5px 0; color:#666;">Οι τιμές σου με μεγαλύτερο άνοιγμα (Z).</p>
+        <div class="slider-group">Κλίση (X): <input type="range" id="x" min="-180" max="180" value="-36"> <span id="vx">-36</span></div>
+        <div class="slider-group">Στροφή (Y): <input type="range" id="y" min="-180" max="180" value="-41"> <span id="vy">-41</span></div>
+        <div class="slider-group">Άνοιγμα (Z): <input type="range" id="z" min="-180" max="180" value="-80"> <span id="vz">-80</span></div>
         <hr>
-        <button onclick="copyValues()" style="width:100%; background:#2196F3;">Αντιγραφή Τιμών</button>
+        <button onclick="copyValues()" style="width:100%; background:#2196F3;">Αποθήκευση Τιμών</button>
     </div>
 
     <div id="canvas-container"></div>
     
     <div id="ui-layer">
-        <div id="subtitle">Το σύστημα φορτώνει...</div><br>
+        <div id="subtitle">Σύστημα Έτοιμο</div><br>
         <div class="controls">
             <select id="avatar-select" onchange="loadAvatar(this.value)" style="padding:10px; border-radius:5px;">
                 <option value="rhea.glb">Avatar: Rhea</option>
@@ -60,9 +60,9 @@
         const scene = new THREE.Scene();
         scene.background = new THREE.Color(0xf0e6dc);
         
-        // ΚΑΜΕΡΑ: Ρυθμισμένη για να βλέπει το κέντρο της σκηνής
+        // ΚΑΜΕΡΑ: Ρυθμισμένη για να βλέπει το στήθος χωρίς ροδέλα
         const camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 100);
-        camera.position.set(0, 0.5, 5); 
+        camera.position.set(0, 1.2, 3.8); 
 
         const renderer = new THREE.WebGLRenderer({ antialias: true });
         renderer.setSize(window.innerWidth, window.innerHeight);
@@ -70,7 +70,7 @@
         document.getElementById('canvas-container').appendChild(renderer.domElement);
 
         const controls = new THREE.OrbitControls(camera, renderer.domElement);
-        controls.target.set(0, 0, 0); // Εστίαση στο κέντρο
+        controls.target.set(0, 1.2, 0); // Εστίαση στο ύψος του στήθους
         controls.update();
 
         scene.add(new THREE.AmbientLight(0xffffff, 0.8));
@@ -85,9 +85,9 @@
             if (currentModel) scene.remove(currentModel);
             new THREE.GLTFLoader().load(file, (gltf) => {
                 currentModel = gltf.scene;
-                // ΔΙΟΡΘΩΣΗ: Κατεβάζουμε το μοντέλο αρκετά ώστε το στήθος/κεφάλι να είναι στο κέντρο
-                currentModel.position.set(0, -2.2, 0); 
-                currentModel.scale.set(1.0, 1.0, 1.0); 
+                // ΤΟΠΟΘΕΤΗΣΗ: Κατεβαίνει για να είναι κέντρο
+                currentModel.position.set(0, -1.8, 0); 
+                currentModel.scale.set(1.2, 1.2, 1.2); 
                 scene.add(currentModel);
 
                 currentModel.traverse(n => {
@@ -101,7 +101,6 @@
                     }
                 });
                 applyPose();
-                document.getElementById('subtitle').innerText = "Έτοιμος! Πες 'Καλημέρα'.";
             });
         }
 
@@ -115,13 +114,11 @@
             document.getElementById('vy').innerText = ry;
             document.getElementById('vz').innerText = rz;
 
-            // Εφαρμογή σειράς περιστροφής YXZ
+            // Σειρά περιστροφής YXZ (Ursina style)
             bones.r_shoulder.rotation.order = 'YXZ';
             bones.l_shoulder.rotation.order = 'YXZ';
             
-            // Δεξί χέρι
             bones.r_shoulder.rotation.set(deg(rx), deg(ry), deg(rz));
-            // Αριστερό χέρι (Καθρέφτης)
             bones.l_shoulder.rotation.set(deg(rx), deg(-ry), deg(-rz));
         }
 
@@ -129,23 +126,14 @@
 
         function copyValues() {
             const val = `X: ${document.getElementById('x').value}, Y: ${document.getElementById('y').value}, Z: ${document.getElementById('z').value}`;
-            alert("Τέλεια! Στείλε μου αυτές τις τιμές: " + val);
+            alert("Τέλειες τιμές! Στείλε μου τες: " + val);
         }
 
         // --- ΚΙΝΗΣΕΙΣ ---
-        function move(bone, x, y, z, t=0.5) {
-            if(!bone) return;
-            gsap.to(bone.rotation, { x: deg(x), y: deg(y), z: deg(z), duration: t, ease: "power2.out" });
-        }
-
         function gesture_kalimera() {
             is_busy = true;
-            // Παράδειγμα κίνησης μπροστά
-            move(bones.r_shoulder, 20, 40, -20, 0.5);
-            setTimeout(() => { 
-                applyPose(); 
-                is_busy = false; 
-            }, 1200);
+            gsap.to(bones.r_shoulder.rotation, { x: deg(-20), y: deg(20), z: deg(-30), duration: 0.5 });
+            setTimeout(() => { applyPose(); is_busy = false; }, 1200);
         }
 
         const micBtn = document.getElementById('mic-btn');
@@ -166,12 +154,6 @@
         loadAvatar('rhea.glb');
         function animate() { requestAnimationFrame(animate); renderer.render(scene, camera); }
         animate();
-
-        window.addEventListener('resize', () => {
-            camera.aspect = window.innerWidth / window.innerHeight;
-            camera.updateProjectionMatrix();
-            renderer.setSize(window.innerWidth, window.innerHeight);
-        });
     </script>
 </body>
 </html>
