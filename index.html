@@ -45,6 +45,13 @@
                 <option value="rhea.glb">Avatar 1: Rhea (Γυναίκα)</option>
                 <option value="titan.glb">Avatar 2: Titan (Άνδρας)</option>
             </select>
+            <select id="axis-select">
+                <option value="1">Κίνηση: Mode 1 (Λάθος/Original)</option>
+                <option value="2">Κίνηση: Mode 2 (Σωστό Panda3D)</option>
+                <option value="3">Κίνηση: Mode 3 (Ανταλλαγή Y-Z)</option>
+                <option value="4">Κίνηση: Mode 4 (Ανάποδο Z-Up)</option>
+                <option value="5">Κίνηση: Mode 5 (Πλήρης Αναστροφή)</option>
+            </select>
             <button id="mic-btn">🎙️ Ενεργοποίηση Μικροφώνου</button>
         </div>
     </div>
@@ -58,8 +65,9 @@
         const scene = new THREE.Scene();
         scene.background = new THREE.Color(240/255, 230/255, 220/255);
         
+        // --- 1. ΔΙΟΡΘΩΣΑΜΕ ΤΗΝ ΚΑΜΕΡΑ ΝΑ ΕΙΝΑΙ ΠΙΟ ΠΙΣΩ (Από 3.5 πήγε στο 6.5) ---
         const camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 100);
-        camera.position.set(0, 1.4, 3.5);
+        camera.position.set(0, 1.2, 6.5);
 
         const renderer = new THREE.WebGLRenderer({ antialias: true });
         renderer.setSize(window.innerWidth, window.innerHeight);
@@ -85,9 +93,29 @@
         
         const deg = (d) => d * (Math.PI / 180);
         
-        function hprInterval(joint, x, y, z, duration) {
-            if (joint) gsap.to(joint.rotation, {x: deg(x), y: deg(y), z: deg(z), duration: duration, ease: "none"});
+        // --- 2. Ο ΕΞΥΠΝΟΣ ΔΙΟΡΘΩΤΗΣ ΚΙΝΗΣΕΩΝ (MOTION FIXER) ---
+        function hprInterval(joint, v1, v2, v3, duration) {
+            if (!joint) return;
+            
+            let mode = document.getElementById('axis-select').value;
+            let rx = 0, ry = 0, rz = 0;
+            
+            // Το κάθε Mode δοκιμάζει άλλη μετάφραση από την Python στο Web
+            if (mode === "1") { rx = v1; ry = v2; rz = v3; }
+            else if (mode === "2") { rx = v2; ry = v1; rz = v3; } // Η πιθανότερη λύση
+            else if (mode === "3") { rx = v1; ry = v3; rz = v2; }
+            else if (mode === "4") { rx = -v2; ry = -v1; rz = -v3; }
+            else if (mode === "5") { rx = v3; ry = v2; rz = v1; }
+
+            gsap.to(joint.rotation, {
+                x: deg(rx), 
+                y: deg(ry), 
+                z: deg(rz), 
+                duration: duration, 
+                ease: "power1.inOut" // Έκανα τις κινήσεις ακόμα πιο ομαλές
+            });
         }
+
         function invoke(func, delay_sec) { setTimeout(func, delay_sec * 1000); }
 
         const loader = new THREE.GLTFLoader();
@@ -104,15 +132,12 @@
                 currentModel.position.set(0, -0.5, 0);
                 scene.add(currentModel);
 
-                // --- Η ΕΞΥΠΝΗ ΣΥΝΑΡΤΗΣΗ ΠΟΥ ΑΓΝΟΕΙ ΤΑ PREFIXES ---
                 function bind_joint(bone_name) {
                     let found = null;
                     currentModel.traverse((node) => {
-                        // Εξαφάνιση κύβου
                         if (node.isMesh && node.name.toLowerCase().includes('cube')) {
                             node.visible = false;
                         }
-                        // Ψάχνει αν το όνομα του κόκκαλου ΤΕΛΕΙΩΝΕΙ στη λέξη που ψάχνουμε!
                         if (node.isBone && node.name.endsWith(bone_name)) {
                             found = node;
                         }
@@ -148,12 +173,16 @@
             }, undefined, function(error) {
                 document.getElementById('subtitle').innerText = "ΣΦΑΛΜΑ: Το αρχείο " + filename + " δεν βρέθηκε!";
                 document.getElementById('subtitle').style.color = "red";
-                console.error("Σφάλμα φόρτωσης:", error);
             });
         }
 
         document.getElementById('avatar-select').addEventListener('change', (e) => {
             load_avatar(e.target.value);
+        });
+
+        // Μόλις αλλάζεις Mode, θα ξαναπαίρνει την αρχική στάση για να βλέπεις αν είναι σωστή!
+        document.getElementById('axis-select').addEventListener('change', () => {
+            setup_a_pose(0.5);
         });
         
         load_avatar('rhea.glb');
@@ -165,7 +194,6 @@
         }
         animate();
 
-        // --- ΚΙΝΗΣΕΙΣ ΚΑΙ ΜΗΧΑΝΙΣΜΟΣ ---
         function setup_a_pose(speed = 0.5) {
             hprInterval(r_shoulder, 0, 65, 0, speed);
             hprInterval(r_elbow, 0, 0, 0, speed);
