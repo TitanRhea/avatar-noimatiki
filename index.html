@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Web Avatar - Final Sign Language</title>
+    <title>Web Avatar - Final Pose Fix</title>
     <style>
         body { margin: 0; overflow: hidden; background-color: #f0e6dc; font-family: 'Segoe UI', sans-serif; }
         #canvas-container { width: 100vw; height: 100vh; display: block; }
@@ -29,7 +29,7 @@
 <body>
     <div id="canvas-container"></div>
     <div id="ui-layer">
-        <div id="subtitle">Έτοιμο για φόρτωση...</div><br>
+        <div id="subtitle">Περιμένω φωνητική εντολή...</div><br>
         <div class="controls">
             <select id="avatar-select">
                 <option value="rhea.glb">Avatar 1: Rhea</option>
@@ -48,9 +48,8 @@
         const scene = new THREE.Scene();
         scene.background = new THREE.Color(0xf0e6dc);
         
-        // ΚΑΜΕΡΑ: Πιο κοντά και στο ύψος των ματιών
         const camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 100);
-        camera.position.set(0, 1.6, 3.5);
+        camera.position.set(0, 1.4, 3.0); // Πιο κοντά στο αβατάρ
 
         const renderer = new THREE.WebGLRenderer({ antialias: true });
         renderer.setSize(window.innerWidth, window.innerHeight);
@@ -58,12 +57,12 @@
         document.getElementById('canvas-container').appendChild(renderer.domElement);
 
         const controls = new THREE.OrbitControls(camera, renderer.domElement);
-        controls.target.set(0, 1.4, 0); // Εστίαση ψηλά στο πρόσωπο
+        controls.target.set(0, 1.3, 0); // Κοιτάζει ψηλά στο πρόσωπο
         controls.update();
 
-        scene.add(new THREE.AmbientLight(0xffffff, 0.7));
+        scene.add(new THREE.AmbientLight(0xffffff, 0.8));
         const sun = new THREE.DirectionalLight(0xffffff, 0.6);
-        sun.position.set(2, 5, 5);
+        sun.position.set(5, 10, 7.5);
         scene.add(sun);
 
         let currentModel = null, is_busy = false, gesture_queue = [], last_activity_time = Date.now();
@@ -72,11 +71,11 @@
 
         function hpr(bone, v1, v2, v3, duration = 0.5) {
             if (!bone) return;
-            // Επιβολή σειράς περιστροφής για να αποφευχθεί το στρίψιμο πίσω από την πλάτη
             bone.rotation.order = 'ZXY';
+            // Μετάφραση: v1=Y (στροφή), v2=X (μπρος-πίσω), v3=Z (πάνω-κάτω πλάι)
             gsap.to(bone.rotation, {
-                x: deg(v1), 
-                y: deg(v2), 
+                x: deg(v2), 
+                y: deg(v1), 
                 z: deg(v3), 
                 duration: duration, 
                 ease: "power2.inOut"
@@ -89,7 +88,8 @@
             bones = {};
             loader.load(file, (gltf) => {
                 currentModel = gltf.scene;
-                currentModel.position.set(0, 0, 0); // Πιο πάνω στην οθόνη
+                currentModel.position.set(0, -0.2, 0); // Το κατεβάζουμε λίγο για να φαίνεται το κεφάλι κέντρο
+                currentModel.scale.set(1.3, 1.3, 1.3); // Μεγαλύτερο αβατάρ
                 scene.add(currentModel);
 
                 currentModel.traverse(n => {
@@ -110,47 +110,49 @@
         }
 
         function resetPose(speed = 0.5) {
-            hpr(bones.r_shoulder, -65, 0, 0, speed);
-            hpr(bones.l_shoulder, -65, 0, 0, speed);
+            // Χρησιμοποιούμε τον άξονα Z για να πέσουν τα χέρια κάτω (v3)
+            hpr(bones.r_shoulder, 0, 0, -65, speed); 
+            hpr(bones.l_shoulder, 0, 0, 65, speed);
             [bones.r_elbow, bones.l_elbow, bones.r_wrist, bones.l_wrist].forEach(b => hpr(b, 0, 0, 0, speed));
         }
 
-        // --- Κινήσεις ---
+        // --- Κινήσεις Διορθωμένες ---
         function gesture_kalimera() {
             is_busy = true;
-            hpr(bones.r_shoulder, -30, 20, 40, 0.4);
-            hpr(bones.r_elbow, 40, 0, 0, 0.4);
+            // Σηκώνει το δεξί χέρι μπροστά και πάνω
+            hpr(bones.r_shoulder, 0, -60, -20, 0.4); 
+            hpr(bones.r_elbow, 0, -40, 0, 0.4);
             setTimeout(() => {
-                hpr(bones.r_shoulder, -10, 10, 20, 0.3);
+                hpr(bones.r_wrist, 30, 0, 0, 0.2);
                 setTimeout(() => { resetPose(); is_busy = false; last_activity_time = Date.now(); }, 800);
             }, 500);
         }
 
         function gesture_geia() {
             is_busy = true;
-            hpr(bones.r_shoulder, -10, 20, 60, 0.4);
+            hpr(bones.r_shoulder, 0, -80, -30, 0.4);
             setTimeout(() => {
-                hpr(bones.r_wrist, 0, 0, 30, 0.2);
-                setTimeout(() => { hpr(bones.r_wrist, 0, 0, -30, 0.2); }, 200);
+                hpr(bones.r_wrist, 0, 0, 40, 0.2);
+                setTimeout(() => { hpr(bones.r_wrist, 0, 0, -40, 0.2); }, 200);
                 setTimeout(() => { resetPose(); is_busy = false; last_activity_time = Date.now(); }, 800);
             }, 500);
         }
 
         function gesture_efcharisto() {
             is_busy = true;
-            hpr(bones.r_shoulder, -20, 0, 10, 0.4);
-            hpr(bones.r_elbow, 60, 0, 0, 0.4);
+            hpr(bones.r_shoulder, 0, -40, -10, 0.4);
+            hpr(bones.r_elbow, 0, -80, 0, 0.4);
             setTimeout(() => {
-                hpr(bones.r_shoulder, -70, 0, 0, 0.5);
+                hpr(bones.r_shoulder, 0, -20, -10, 0.4);
                 setTimeout(() => { resetPose(); is_busy = false; last_activity_time = Date.now(); }, 1000);
             }, 600);
         }
 
         function gesture_onoma() {
             is_busy = true;
-            hpr(bones.r_shoulder, -40, 0, 30, 0.4);
+            hpr(bones.r_shoulder, 0, -50, -40, 0.4);
             setTimeout(() => {
-                hpr(bones.r_shoulder, -40, 40, 30, 0.4);
+                hpr(bones.r_shoulder, 40, -50, -40, 0.4);
                 setTimeout(() => { resetPose(); is_busy = false; last_activity_time = Date.now(); }, 1000);
             }, 600);
         }
@@ -171,7 +173,7 @@
         recognition.lang = 'el-GR'; recognition.continuous = true;
         recognition.onresult = (e) => {
             const t = e.results[e.results.length-1][0].transcript.toLowerCase();
-            document.getElementById('subtitle').innerText = t;
+            document.getElementById('subtitle').innerText = "Είπες: " + t;
             t.split(" ").forEach(word => gesture_queue.push(word));
         };
         micBtn.onclick = () => { recognition.start(); micBtn.classList.add('listening'); };
