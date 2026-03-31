@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Web Avatar - Ελληνική Νοηματική</title>
+    <title>Web Avatar - Εργαστήριο Διόρθωσης</title>
     <style>
         body { margin: 0; overflow: hidden; background-color: #f0e6dc; font-family: 'Segoe UI', sans-serif; }
         #canvas-container { width: 100vw; height: 100vh; display: block; }
@@ -18,55 +18,48 @@
             margin-bottom: 15px; font-weight: bold; box-shadow: 0 4px 6px rgba(0,0,0,0.1);
         }
         
-        .controls {
-            pointer-events: auto; background: rgba(255, 255, 255, 0.9);
-            padding: 15px; border-radius: 15px; display: inline-block; box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        /* ΤΟ ΝΕΟ ΠΑΝΕΛ ΓΙΑ ΤΑ SLIDERS ΠΑΝΩ ΑΡΙΣΤΕΡΑ */
+        #calibration-panel {
+            position: absolute; top: 20px; left: 20px; background: rgba(255, 255, 255, 0.95);
+            padding: 20px; border-radius: 15px; box-shadow: 0 4px 10px rgba(0,0,0,0.2);
+            pointer-events: auto; font-size: 16px;
         }
+        .slider-row { margin: 15px 0; }
+        input[type="range"] { width: 150px; cursor: pointer; }
+        .val-badge { display: inline-block; width: 40px; text-align: right; font-weight: bold; color: #d32f2f; }
         
-        select, button {
-            font-size: 16px; padding: 10px 20px; margin: 5px; border-radius: 8px;
-            border: 1px solid #ccc; cursor: pointer;
-        }
-        
-        #mic-btn { background-color: #4CAF50; color: white; border: none; font-weight: bold; transition: 0.3s; width: 100%; margin-top: 10px;}
-        #mic-btn.listening { background-color: #f44336; animation: pulse 1.5s infinite; }
-        
-        .lab-panel {
-            margin-top: 15px; padding-top: 15px; border-top: 1px solid #ccc; font-size: 14px; text-align: left;
-        }
-        .lab-panel label { cursor: pointer; display: block; margin: 5px 0; }
-        
-        @keyframes pulse { 0% { transform: scale(1); } 50% { transform: scale(1.05); } 100% { transform: scale(1); } }
+        select { font-size: 16px; padding: 10px; border-radius: 8px; cursor: pointer; pointer-events: auto; }
     </style>
 </head>
 <body>
 
     <div id="canvas-container"></div>
     
-    <div id="ui-layer">
-        <div id="subtitle">Φόρτωση Συστήματος...</div><br>
-        <div class="controls">
-            <select id="avatar-select" style="width: 100%;">
-                <option value="rhea.glb">Avatar 1: Rhea (Γυναίκα)</option>
-                <option value="titan.glb">Avatar 2: Titan (Άνδρας)</option>
-            </select>
-            <button id="mic-btn">🎙️ Ενεργοποίηση Μικροφώνου</button>
-            
-            <div class="lab-panel">
-                <b>🛠️ Διόρθωση Αξόνων:</b><br>
-                <select id="axis-order" style="width: 100%;">
-                    <option value="xyz">Σειρά: 1-2-3 (Κανονική)</option>
-                    <option value="xzy">Σειρά: 1-3-2</option>
-                    <option value="yxz">Σειρά: 2-1-3</option>
-                    <option value="yzx">Σειρά: 2-3-1 (Πιθανή)</option>
-                    <option value="zxy">Σειρά: 3-1-2</option>
-                    <option value="zyx">Σειρά: 3-2-1</option>
-                </select>
-                <label><input type="checkbox" id="inv1"> Ανάποδα ο 1ος αριθμός</label>
-                <label><input type="checkbox" id="inv2"> Ανάποδα ο 2ος αριθμός</label>
-                <label><input type="checkbox" id="inv3"> Ανάποδα ο 3ος αριθμός</label>
-            </div>
+    <div id="calibration-panel">
+        <h3 style="margin-top: 0; margin-bottom: 10px;">🛠️ Βρες τη Σωστή Στάση</h3>
+        <p style="font-size: 14px; margin-top: 0;">Κούνα τα sliders μέχρι το δεξί χέρι<br>να πέσει φυσιολογικά κάτω.</p>
+        
+        <select id="avatar-select" style="width: 100%; margin-bottom: 15px;">
+            <option value="rhea.glb">Avatar 1: Rhea</option>
+            <option value="titan.glb">Avatar 2: Titan</option>
+        </select>
+
+        <div class="slider-row">
+            Άξονας X: <input type="range" min="-180" max="180" value="0" id="sliderX"> 
+            <span class="val-badge" id="valX">0</span>°
         </div>
+        <div class="slider-row">
+            Άξονας Y: <input type="range" min="-180" max="180" value="0" id="sliderY"> 
+            <span class="val-badge" id="valY">0</span>°
+        </div>
+        <div class="slider-row">
+            Άξονας Z: <input type="range" min="-180" max="180" value="0" id="sliderZ"> 
+            <span class="val-badge" id="valZ">0</span>°
+        </div>
+    </div>
+
+    <div id="ui-layer">
+        <div id="subtitle">Φόρτωση...</div>
     </div>
 
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
@@ -78,9 +71,9 @@
         const scene = new THREE.Scene();
         scene.background = new THREE.Color(240/255, 230/255, 220/255);
         
+        // --- 1. ΔΙΟΡΘΩΣΗ ΥΨΟΥΣ: Η Κάμερα βλέπει πλέον στο στήθος, άρα το Avatar φαίνεται ψηλότερα! ---
         const camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 100);
-        // ΔΙΟΡΘΩΣΗ ΚΑΜΕΡΑΣ (Τραβήχτηκε στο 10 για να φαίνεται όλο)
-        camera.position.set(0, 1.5, 10);
+        camera.position.set(0, 1.2, 4.5); // Τραβήχτηκε πιο πίσω
 
         const renderer = new THREE.WebGLRenderer({ antialias: true });
         renderer.setSize(window.innerWidth, window.innerHeight);
@@ -88,7 +81,7 @@
         document.getElementById('canvas-container').appendChild(renderer.domElement);
 
         const controls = new THREE.OrbitControls(camera, renderer.domElement);
-        controls.target.set(0, 1.2, 0);
+        controls.target.set(0, 0.8, 0); // Το κέντρο εστίασης κατέβηκε (για να ανέβει το Avatar)
         controls.update();
 
         const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
@@ -98,106 +91,59 @@
         scene.add(dirLight);
 
         let currentModel = null;
-        let r_shoulder, l_shoulder, r_elbow, l_elbow, r_wrist, l_wrist;
-        let r_fingers = [], l_fingers = [], r_joints_all = {};
-        let is_busy = false;
-        let gesture_queue = [];
-        let last_activity_time = Date.now();
+        let r_shoulder = null;
         
         const deg = (d) => d * (Math.PI / 180);
-        
-        // --- ΕΞΥΠΝΟΣ ΜΕΤΑΦΡΑΣΤΗΣ ΚΙΝΗΣΗΣ ---
-        function hprInterval(joint, v1, v2, v3, duration) {
-            if (!joint) return;
-            
-            // Παίρνουμε τις ρυθμίσεις από το μενού
-            let order = document.getElementById('axis-order').value;
-            let i1 = document.getElementById('inv1').checked ? -1 : 1;
-            let i2 = document.getElementById('inv2').checked ? -1 : 1;
-            let i3 = document.getElementById('inv3').checked ? -1 : 1;
-
-            // Αντιστρέφουμε όπου χρειάζεται
-            let f1 = v1 * i1;
-            let f2 = v2 * i2;
-            let f3 = v3 * i3;
-
-            let rx = 0, ry = 0, rz = 0;
-
-            // Αλλάζουμε τη σειρά
-            if (order === 'xyz') { rx = f1; ry = f2; rz = f3; }
-            else if (order === 'xzy') { rx = f1; ry = f3; rz = f2; }
-            else if (order === 'yxz') { rx = f2; ry = f1; rz = f3; }
-            else if (order === 'yzx') { rx = f2; ry = f3; rz = f1; }
-            else if (order === 'zxy') { rx = f3; ry = f1; rz = f2; }
-            else if (order === 'zyx') { rx = f3; ry = f2; rz = f1; }
-
-            gsap.to(joint.rotation, {x: deg(rx), y: deg(ry), z: deg(rz), duration: duration, ease: "power1.inOut"});
-        }
-        function invoke(func, delay_sec) { setTimeout(func, delay_sec * 1000); }
 
         const loader = new THREE.GLTFLoader();
 
         function load_avatar(filename) {
             document.getElementById('subtitle').innerText = "Φόρτωση " + filename + "...";
             if (currentModel) scene.remove(currentModel);
-            
-            r_shoulder = l_shoulder = r_elbow = l_elbow = r_wrist = l_wrist = null;
-            r_fingers = []; l_fingers = []; r_joints_all = {};
 
             loader.load(filename, function(gltf) {
                 currentModel = gltf.scene;
                 currentModel.position.set(0, -0.5, 0);
                 scene.add(currentModel);
 
-                function bind_joint(bone_name) {
-                    let found = null;
-                    currentModel.traverse((node) => {
-                        if (node.isMesh && node.name.toLowerCase().includes('cube')) node.visible = false;
-                        if (node.isBone && node.name.endsWith(bone_name)) found = node;
-                    });
-                    return found;
-                }
-
-                r_shoulder = bind_joint(`RightArm`);
-                r_elbow    = bind_joint(`RightForeArm`);
-                r_wrist    = bind_joint(`RightHand`);
-                l_shoulder = bind_joint(`LeftArm`);
-                l_elbow    = bind_joint(`LeftForeArm`);
-                l_wrist    = bind_joint(`LeftHand`);
-
-                const finger_names = ['Index', 'Middle', 'Ring', 'Pinky', 'Thumb'];
-                finger_names.forEach(f => {
-                    ['1', '2', '3'].forEach(s => {
-                        let rj = bind_joint(`RightHand${f}${s}`);
-                        if (rj) {
-                            if (f === 'Index') r_joints_all[`Index${s}`] = rj;
-                            r_joints_all[`${f}${s}`] = rj;
-                            if (s === '1' && f !== 'Thumb') r_fingers.push(rj);
-                        }
-                    });
-                    let lj = bind_joint(`LeftHand${f}1`);
-                    if (lj && f !== 'Thumb') l_fingers.push(lj);
+                // Βρίσκει τον δεξί ώμο
+                currentModel.traverse((node) => {
+                    if (node.isMesh && node.name.toLowerCase().includes('cube')) node.visible = false;
+                    if (node.isBone && node.name.endsWith('RightArm')) r_shoulder = node;
                 });
 
-                is_busy = false;
-                setup_a_pose(0.01);
-                document.getElementById('subtitle').innerText = "Σύστημα Έτοιμο!";
-                document.getElementById('subtitle').style.color = "#333";
+                // Μηδενισμός Sliders σε κάθε φόρτωση
+                document.getElementById('sliderX').value = 0; document.getElementById('valX').innerText = "0";
+                document.getElementById('sliderY').value = 0; document.getElementById('valY').innerText = "0";
+                document.getElementById('sliderZ').value = 0; document.getElementById('valZ').innerText = "0";
+                
+                if (r_shoulder) r_shoulder.rotation.set(0,0,0);
+
+                document.getElementById('subtitle').innerText = "Όλα Έτοιμα! Κούνα τα Sliders.";
             });
         }
 
-        // Ανανέωση Στάσης όταν πειράζεις το εργαστήριο
-        ['axis-order', 'inv1', 'inv2', 'inv3'].forEach(id => {
-            document.getElementById(id).addEventListener('change', () => {
-                setup_a_pose(0.5);
-            });
-        });
-
-        document.getElementById('avatar-select').addEventListener('change', (e) => {
-            load_avatar(e.target.value);
-        });
-        
+        document.getElementById('avatar-select').addEventListener('change', (e) => load_avatar(e.target.value));
         load_avatar('rhea.glb');
+
+        // --- 2. ΣΥΝΔΕΣΗ ΤΩΝ SLIDERS ΜΕ ΤΟΝ ΩΜΟ ---
+        function updateShoulder() {
+            if (!r_shoulder) return;
+            let x = document.getElementById('sliderX').value;
+            let y = document.getElementById('sliderY').value;
+            let z = document.getElementById('sliderZ').value;
+            
+            document.getElementById('valX').innerText = x;
+            document.getElementById('valY').innerText = y;
+            document.getElementById('valZ').innerText = z;
+
+            // Εφαρμογή της περιστροφής στο κόκκαλο σε πραγματικό χρόνο
+            r_shoulder.rotation.set(deg(x), deg(y), deg(z));
+        }
+
+        document.getElementById('sliderX').addEventListener('input', updateShoulder);
+        document.getElementById('sliderY').addEventListener('input', updateShoulder);
+        document.getElementById('sliderZ').addEventListener('input', updateShoulder);
 
         function animate() {
             requestAnimationFrame(animate);
@@ -205,331 +151,6 @@
             renderer.render(scene, camera);
         }
         animate();
-
-        function setup_a_pose(speed = 0.5) {
-            hprInterval(r_shoulder, 0, 65, 0, speed);
-            hprInterval(r_elbow, 0, 0, 0, speed);
-            hprInterval(r_wrist, 0, 0, 0, speed);
-            hprInterval(l_shoulder, 0, 65, 0, speed);
-            hprInterval(l_elbow, 0, 0, 0, speed);
-            hprInterval(l_wrist, 0, 0, 0, speed);
-            Object.values(r_joints_all).forEach(j => hprInterval(j, 0, 0, 0, speed));
-            l_fingers.forEach(j => hprInterval(j, 0, 0, 0, speed));
-        }
-
-        function finalize_gesture() {
-            last_activity_time = Date.now();
-            invoke(() => { is_busy = false; }, 0.4);
-        }
-
-        function animate_fingers(state = "close", count = 2) {
-            if (count <= 0) return;
-            if (state === "close") {
-                r_fingers.forEach(f => hprInterval(f, 0, 0, 45, 0.2));
-                l_fingers.forEach(f => hprInterval(f, 0, 0, -45, 0.2));
-                invoke(() => animate_fingers("open", count), 0.25);
-            } else {
-                r_fingers.forEach(f => hprInterval(f, 0, 0, 0, 0.2));
-                l_fingers.forEach(f => hprInterval(f, 0, 0, 0, 0.2));
-                invoke(() => animate_fingers("close", count - 1), 0.25);
-            }
-        }
-
-        function part_2_finish() {
-            hprInterval(r_shoulder, -40, 35, 100, 0.55);
-            hprInterval(l_shoulder, 40, 35, -100, 0.55);
-            hprInterval(r_elbow, 20, -25, 30, 0.55);
-            hprInterval(l_elbow, -20, -25, -30, 0.55);
-            hprInterval(r_wrist, 20, 30, 100, 0.55);
-            hprInterval(l_wrist, -20, 30, -100, 0.55);
-            invoke(() => animate_fingers("close", 2), 0.4);
-            invoke(finalize_gesture, 1.4);
-        }
-
-        function gesture_efcharisto() {
-            setup_a_pose(0.2);
-            is_busy = true;
-            if (r_shoulder && r_elbow && r_wrist) {
-                hprInterval(r_shoulder, -50, 30, 50, 0.45);
-                hprInterval(r_elbow, -90, -110, 0, 0.45);
-                hprInterval(r_wrist, 100, 30, 0, 0.45);
-                invoke(part_2_finish, 0.8);
-            }
-        }
-
-        function shake_index(state = "bend", count = 2) {
-            if (count <= 0) return;
-            if (state === "bend") {
-                ['1', '2', '3'].forEach(s => { let key = `Index${s}`; if(r_joints_all[key]) hprInterval(r_joints_all[key], 0, 40, 0, 0.1); });
-                invoke(() => shake_index("straight", count), 0.15);
-            } else {
-                ['1', '2', '3'].forEach(s => { let key = `Index${s}`; if(r_joints_all[key]) hprInterval(r_joints_all[key], 0, 0, 0, 0.1); });
-                invoke(() => shake_index("bend", count - 1), 0.15);
-            }
-            if (count === 1 && state === "straight") invoke(finalize_gesture, 0.2);
-        }
-
-        function animate_fist_close() {
-            hprInterval(r_wrist, 15, -60, 100, 0.15);
-            for (let name in r_joints_all) {
-                let joint = r_joints_all[name];
-                if (name.includes('Thumb')) {
-                    if (name.includes('1')) hprInterval(joint, -40, 40, 0, 0.15);
-                    else hprInterval(joint, 0, 50, 0, 0.15);
-                } else if (name.includes('Index')) {
-                    hprInterval(joint, 0, 0, 0, 0.15);
-                } else {
-                    hprInterval(joint, 0, 110, 0, 0.15);
-                }
-            }
-            invoke(() => shake_index("bend", 2), 0.3);
-        }
-
-        function mouza_action() {
-            hprInterval(r_wrist, 0, -80, 100, 0.2);
-            r_fingers.forEach(f => hprInterval(f, 0, 0, -40, 0.15));
-            invoke(animate_fist_close, 0.1);
-        }
-
-        function gesture_kalimera() {
-            setup_a_pose(0.2);
-            is_busy = true;
-            if (r_shoulder && r_elbow && r_wrist) {
-                hprInterval(r_shoulder, -40, 35, 100, 0.3);
-                hprInterval(r_elbow, 20, -25, 30, 0.3);
-                hprInterval(r_wrist, 20, 30, 100, 0.3);
-                invoke(mouza_action, 0.8);
-            }
-        }
-
-        function shake_hand_mesimeri(state = "out", count = 2) {
-            if (count <= 0) return;
-            if (state === "out") {
-                hprInterval(r_shoulder, -42, 33, 102, 0.15);
-                hprInterval(r_elbow, 10, -32, 30, 0.15);
-                hprInterval(r_wrist, 20, 15, 100, 0.15);
-                invoke(() => shake_hand_mesimeri("in", count), 0.18);
-            } else {
-                hprInterval(r_shoulder, -45, 32, 105, 0.15);
-                hprInterval(r_elbow, 0, -40, 30, 0.15);
-                hprInterval(r_wrist, 20, -2, 100, 0.15);
-                invoke(() => shake_hand_mesimeri("out", count - 1), 0.18);
-            }
-            if (count === 1 && state === "in") invoke(finalize_gesture, 0.2);
-        }
-
-        function mesimeri_chin_action() {
-            hprInterval(r_shoulder, -45, 32, 105, 0.4);
-            hprInterval(r_elbow, 0, -40, 30, 0.4);
-            hprInterval(r_wrist, 20, -2, 100, 0.4);
-            invoke(() => shake_hand_mesimeri("out", 2), 0.42);
-        }
-
-        function gesture_kalo_mesimeri() {
-            setup_a_pose(0.2);
-            is_busy = true;
-            if (r_shoulder && r_elbow && r_wrist) {
-                hprInterval(r_shoulder, -40, 35, 100, 0.5);
-                hprInterval(r_elbow, 20, -25, 30, 0.5);
-                hprInterval(r_wrist, 20, 30, 100, 0.5);
-                invoke(mesimeri_chin_action, 0.8);
-            }
-        }
-
-        function wave_action(state = "right", count = 3) {
-            if (count <= 0) { invoke(finalize_gesture, 0.2); return; }
-            if (state === "right") {
-                hprInterval(r_wrist, 0, -110, 120, 0.2);
-                invoke(() => wave_action("left", count), 0.2);
-            } else {
-                hprInterval(r_wrist, 0, -110, 60, 0.2);
-                invoke(() => wave_action("right", count - 1), 0.2);
-            }
-        }
-
-        function gesture_geia() {
-            setup_a_pose(0.2);
-            is_busy = true;
-            if (r_shoulder && r_elbow && r_wrist) {
-                hprInterval(r_shoulder, -40, 35, 100, 0.4);
-                hprInterval(r_elbow, 20, -25, 30, 0.4);
-                hprInterval(r_wrist, 0, -110, 90, 0.4);
-                invoke(() => wave_action("right", 4), 0.5);
-            }
-        }
-
-        function circle_onoma(state = "up", count = 3) {
-            if (count <= 0) { invoke(finalize_gesture, 0.2); return; }
-            let t = 0.15;
-            if (state === "up") {
-                hprInterval(r_elbow, 20, -20, 30, t); hprInterval(l_elbow, -20, -20, -30, t);
-                invoke(() => circle_onoma("out", count), t);
-            } else if (state === "out") {
-                hprInterval(r_elbow, 30, -10, 30, t); hprInterval(l_elbow, -30, -10, -30, t);
-                invoke(() => circle_onoma("down", count), t);
-            } else if (state === "down") {
-                hprInterval(r_elbow, 20, 0, 30, t); hprInterval(l_elbow, -20, 0, -30, t);
-                invoke(() => circle_onoma("in", count), t);
-            } else if (state === "in") {
-                hprInterval(r_elbow, 10, -10, 30, t); hprInterval(l_elbow, -10, -10, -30, t);
-                invoke(() => circle_onoma("up", count - 1), t);
-            }
-        }
-
-        function phase_2_onoma() {
-            hprInterval(r_shoulder, -30, 20, 80, 0.3); hprInterval(l_shoulder, 30, 20, -80, 0.3);
-            hprInterval(r_wrist, 0, -90, 90, 0.3); hprInterval(l_wrist, 0, -90, -90, 0.3);
-            
-            for (let name in r_joints_all) {
-                if (!name.includes('Index')) hprInterval(r_joints_all[name], 0, 90, 0, 0.2);
-                else hprInterval(r_joints_all[name], 0, 0, 0, 0.2);
-            }
-            l_fingers.forEach((f, i) => {
-                if (i === 0) hprInterval(f, 0, 0, 0, 0.2);
-                else hprInterval(f, 0, 0, -90, 0.2);
-            });
-            invoke(() => circle_onoma("up", 3), 0.35);
-        }
-
-        function gesture_onoma() {
-            setup_a_pose(0.2);
-            is_busy = true;
-            if (r_shoulder && r_elbow && r_wrist) {
-                hprInterval(r_shoulder, -20, 20, 80, 0.4);
-                hprInterval(r_elbow, 0, 0, 0, 0.4);
-                hprInterval(r_wrist, 0, 0, 0, 0.4);
-                for (let name in r_joints_all) {
-                    if (!name.includes('Index')) hprInterval(r_joints_all[name], 0, 90, 0, 0.3);
-                }
-                invoke(phase_2_onoma, 0.8);
-            }
-        }
-
-        function shake_noimatiko(state = "right_fwd", count = 4) {
-            if (count <= 0) { invoke(finalize_gesture, 0.2); return; }
-            if (state === "right_fwd") {
-                hprInterval(r_elbow, 20, -40, 30, 0.15); hprInterval(l_elbow, -20, 0, -30, 0.15);
-                invoke(() => shake_noimatiko("left_fwd", count), 0.2);
-            } else {
-                hprInterval(r_elbow, 20, 0, 30, 0.15); hprInterval(l_elbow, -20, -40, -30, 0.15);
-                invoke(() => shake_noimatiko("right_fwd", count - 1), 0.2);
-            }
-        }
-
-        function phase_2_noimatiko() {
-            hprInterval(r_shoulder, -30, 20, 80, 0.3); hprInterval(l_shoulder, 30, 20, -80, 0.3);
-            for (let name in r_joints_all) {
-                if (!name.includes('Index')) hprInterval(r_joints_all[name], 0, 90, 0, 0.2);
-                else hprInterval(r_joints_all[name], 0, 0, 0, 0.2);
-            }
-            l_fingers.forEach((f, i) => {
-                if (i === 0) hprInterval(f, 0, 0, 0, 0.2);
-                else hprInterval(f, 0, 0, -90, 0.2);
-            });
-            invoke(() => shake_noimatiko("right_fwd", 4), 0.35);
-        }
-
-        function gesture_noimatiko_onoma() {
-            setup_a_pose(0.2);
-            is_busy = true;
-            if (r_shoulder && r_elbow && r_wrist) {
-                hprInterval(r_shoulder, -20, 20, 80, 0.4);
-                hprInterval(r_elbow, 0, 0, 0, 0.4);
-                hprInterval(r_wrist, 0, 0, 0, 0.4);
-                for (let name in r_joints_all) {
-                    if (!name.includes('Index')) hprInterval(r_joints_all[name], 0, 90, 0, 0.3);
-                }
-                invoke(phase_2_noimatiko, 0.8);
-            }
-        }
-
-        setInterval(() => {
-            if (!is_busy && gesture_queue.length > 0) {
-                let word = gesture_queue.shift();
-                
-                if (word === "καλό μεσημέρι" || word === "καλο μεσημερι") gesture_kalo_mesimeri();
-                else if (word === "καλό" && gesture_queue.length > 0 && (gesture_queue[0] === "μεσημέρι" || gesture_queue[0] === "μεσημερι")) { 
-                    gesture_queue.shift(); gesture_kalo_mesimeri(); 
-                }
-                else if (word === "ευχαριστώ" || word === "ευχαριστω") gesture_efcharisto();
-                else if (word === "καλημέρα" || word === "καλημερα") gesture_kalimera();
-                else if (word === "μεσημέρι" || word === "μεσημερι") gesture_kalo_mesimeri();
-                else if (word === "γεια" || word === "για" || word === "γει" || word === "γι") gesture_geia();
-                else if (word === "όνομα" || word === "ονομα") gesture_onoma();
-                else if (word === "νοηματικό όνομα" || word === "νοηματικο ονομα") gesture_noimatiko_onoma();
-            }
-
-            if (!is_busy && gesture_queue.length === 0 && (Date.now() - last_activity_time > 3000)) {
-                setup_a_pose(1.0);
-                last_activity_time = Date.now();
-            }
-        }, 100);
-
-        const micBtn = document.getElementById('mic-btn');
-        const subtitle = document.getElementById('subtitle');
-        let recognition;
-
-        if ('webkitSpeechRecognition' in window) {
-            recognition = new webkitSpeechRecognition();
-            recognition.continuous = true;
-            recognition.interimResults = false;
-            recognition.lang = 'el-GR';
-
-            recognition.onstart = function() {
-                micBtn.classList.add('listening');
-                micBtn.innerText = "🛑 Διακοπή Ακρόασης";
-                subtitle.innerText = "Ακούω...";
-            };
-
-            recognition.onresult = function(event) {
-                let text = event.results[event.results.length - 1][0].transcript.toLowerCase().trim();
-                last_activity_time = Date.now();
-                
-                const mesimeri_vars = ["καλό μεσημέρι", "καλο μεσημερι", "καλό μεσημ", "καλο μεσημ", "καλό μεση", "καλο μεση", "καλό μεσ", "καλο μεσ"];
-                mesimeri_vars.forEach(v => { text = text.replace(v, "καλό_μεσημέρι"); });
-
-                const noimatiko_vars = [
-                    "ποιο είναι το νοηματικό σου όνομα", "ποιο ειναι το νοηματικο σου ονομα",
-                    "ποιο είναι το νοηματικό σου", "ποιο ειναι το νοηματικο σου",
-                    "ποιο είναι το νοηματικό", "ποιο ειναι το νοηματικο",
-                    "το νοηματικό σου όνομα", "το νοηματικο σου ονομα",
-                    "νοηματικό όνομα", "νοηματικο ονομα", "νοηματικό", "νοηματικο",
-                    "ποιο είναι το νοημ", "ποιο ειναι το νοημ", "ποιο είναι το νοη", "ποιο ειναι το νοη"
-                ];
-                noimatiko_vars.forEach(v => { text = text.replace(v, "νοηματικό_όνομα"); });
-
-                const name_phrases = ["ποιο είναι το όνομά σου", "πώς σε λένε", "πώς σας λένε", "πως σε λενε"];
-                name_phrases.forEach(phrase => { text = text.replace(phrase, "όνομα"); });
-                text = text.replace("όνομά", "όνομα");
-
-                let display_text = [];
-                text.split(" ").forEach(w => {
-                    let display_word = w.replace("_", " ");
-                    display_text.push(display_word);
-                    
-                    if (w === "καλό_μεσημέρι") gesture_queue.push("καλό μεσημέρι");
-                    else if (w === "νοηματικό_όνομα") gesture_queue.push("νοηματικό όνομα");
-                    else gesture_queue.push(w);
-                });
-
-                subtitle.innerText = `Είπες: "${display_text.join(' ')}"`;
-            };
-
-            recognition.onerror = function() {
-                micBtn.classList.remove('listening');
-                micBtn.innerText = "🎙️ Ενεργοποίηση Μικροφώνου";
-            };
-            recognition.onend = function() {
-                micBtn.classList.remove('listening');
-                micBtn.innerText = "🎙️ Ενεργοποίηση Μικροφώνου";
-            };
-        }
-
-        let isListening = false;
-        micBtn.addEventListener('click', () => {
-            if (!isListening) { recognition.start(); isListening = true; } 
-            else { recognition.stop(); isListening = false; }
-        });
 
         window.addEventListener('resize', () => {
             camera.aspect = window.innerWidth / window.innerHeight;
