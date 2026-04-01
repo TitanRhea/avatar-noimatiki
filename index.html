@@ -121,14 +121,14 @@
         // --- 1. ΕΥΧΑΡΙΣΤΩ ---
         function gesture_efcharisto() {
             is_busy = true;
-            // Το χέρι πάει ψηλά (X:0) και προς το στήθος/πηγούνι (Y:-10). Το Z μένει 17. 
-            gsap.to(bones.r_shoulder.rotation, { x: deg(0), y: deg(-10), z: deg(17), duration: 0.45 });
-            if (bones.r_elbow) gsap.to(bones.r_elbow.rotation, { x: deg(-100), y: 0, z: 0, duration: 0.45 });
+            // Φάση 1: Ώμος μπροστά και μέσα (X:0, Y:0). Αγκώνας λυγίζει ΣΤΟΝ ΑΞΟΝΑ X.
+            gsap.to(bones.r_shoulder.rotation, { x: deg(0), y: deg(0), z: deg(17), duration: 0.45 });
+            if (bones.r_elbow) gsap.to(bones.r_elbow.rotation, { x: deg(-110), y: 0, z: 0, duration: 0.45 });
             
+            // Φάση 2: Το χέρι πέφτει εμπρός και ανοίγει ο αγκώνας
             setTimeout(() => {
-                // Το χέρι πέφτει μπροστά
-                gsap.to(bones.r_shoulder.rotation, { x: deg(20), y: deg(10), z: deg(17), duration: 0.55 });
-                if (bones.r_elbow) gsap.to(bones.r_elbow.rotation, { x: deg(-30), y: 0, z: 0, duration: 0.55 });
+                gsap.to(bones.r_shoulder.rotation, { x: deg(20), y: deg(20), z: deg(17), duration: 0.55 });
+                if (bones.r_elbow) gsap.to(bones.r_elbow.rotation, { x: deg(-20), y: 0, z: 0, duration: 0.55 });
                 finalize_gesture();
             }, 600);
         }
@@ -136,13 +136,13 @@
         // --- 2. ΚΑΛΗΜΕΡΑ ---
         function gesture_kalimera() {
             is_busy = true;
-            // Το χέρι πάει στο στήθος
-            gsap.to(bones.r_shoulder.rotation, { x: deg(0), y: deg(-10), z: deg(17), duration: 0.4 });
+            // Φάση 1: Χέρι στο στήθος
+            gsap.to(bones.r_shoulder.rotation, { x: deg(0), y: deg(0), z: deg(17), duration: 0.4 });
             if (bones.r_elbow) gsap.to(bones.r_elbow.rotation, { x: deg(-100), y: 0, z: 0, duration: 0.4 });
             
+            // Φάση 2: Χέρι ανοίγει δεξιά
             setTimeout(() => {
-                // Το χέρι ανοίγει δεξιά (Y: 50)
-                gsap.to(bones.r_shoulder.rotation, { x: deg(10), y: deg(50), z: deg(17), duration: 0.5 });
+                gsap.to(bones.r_shoulder.rotation, { x: deg(10), y: deg(60), z: deg(17), duration: 0.5 });
                 if (bones.r_elbow) gsap.to(bones.r_elbow.rotation, { x: deg(-20), y: 0, z: 0, duration: 0.5 });
                 finalize_gesture();
             }, 600);
@@ -151,14 +151,14 @@
         // --- 3. ΓΕΙΑ ---
         function gesture_geia() {
             is_busy = true;
-            // Το χέρι πάει ψηλά και δεξιά (A-Pose Y=30 -> 60)
+            // Το χέρι πάει ψηλά (X:-20) και δεξιά (Y:60), αγκώνας ελαφρώς λυγισμένος
             gsap.to(bones.r_shoulder.rotation, { x: deg(-20), y: deg(60), z: deg(17), duration: 0.4 });
             if (bones.r_elbow) gsap.to(bones.r_elbow.rotation, { x: deg(-40), y: 0, z: 0, duration: 0.4 });
             setTimeout(() => wave_action(4), 450);
         }
         function wave_action(count) {
             if (count <= 0) { finalize_gesture(); return; }
-            let z_angle = count % 2 === 0 ? 30 : -30;
+            let z_angle = count % 2 === 0 ? 30 : -30; // Κίνηση του καρπού
             if (bones.r_wrist) gsap.to(bones.r_wrist.rotation, { x: 0, y: 0, z: deg(z_angle), duration: 0.2 });
             setTimeout(() => wave_action(count - 1), 220);
         }
@@ -166,37 +166,39 @@
         // --- 4. ΚΑΛΟ ΜΕΣΗΜΕΡΙ ---
         function gesture_kalo_mesimeri() {
             is_busy = true;
-            // Το χέρι πάει στο πηγούνι
-            gsap.to(bones.r_shoulder.rotation, { x: deg(0), y: deg(-10), z: deg(17), duration: 0.4 });
+            // Το χέρι λυγίζει έντονα
+            gsap.to(bones.r_shoulder.rotation, { x: deg(0), y: deg(0), z: deg(17), duration: 0.4 });
             if (bones.r_elbow) gsap.to(bones.r_elbow.rotation, { x: deg(-100), y: 0, z: 0, duration: 0.4 });
             setTimeout(() => pulse_mesimeri(4), 500);
         }
         function pulse_mesimeri(count) {
             if (count <= 0) { finalize_gesture(); return; }
-            let elbow_bend = count % 2 === 0 ? -60 : -100; // Παίζει με τον αγκώνα
-            if (bones.r_elbow) gsap.to(bones.r_elbow.rotation, { x: deg(elbow_bend), duration: 0.2 });
+            // Παίζει με τον αγκώνα
+            let elbow_bend = count % 2 === 0 ? -60 : -100; 
+            if (bones.r_elbow) gsap.to(bones.r_elbow.rotation, { x: deg(elbow_bend), y: 0, z: 0, duration: 0.2 });
             setTimeout(() => pulse_mesimeri(count - 1), 220);
         }
 
         // --- 5. ΟΝΟΜΑ ---
         function gesture_onoma() {
             is_busy = true;
-            // Δύο χέρια μπροστά
-            gsap.to(bones.r_shoulder.rotation, { x: deg(10), y: deg(0), z: deg(17), duration: 0.4 });
-            gsap.to(bones.l_shoulder.rotation, { x: deg(10), y: deg(0), z: deg(-17), duration: 0.4 });
-            // Λυγισμένοι αγκώνες
+            // Και τα δύο χέρια έρχονται μπροστά (ώμοι X:10, Y:10/-10) και λυγίζουν (αγκώνες X:-80)
+            gsap.to(bones.r_shoulder.rotation, { x: deg(10), y: deg(10), z: deg(17), duration: 0.4 });
+            gsap.to(bones.l_shoulder.rotation, { x: deg(10), y: deg(-10), z: deg(-17), duration: 0.4 });
+            
             if (bones.r_elbow) gsap.to(bones.r_elbow.rotation, { x: deg(-80), y: 0, z: 0, duration: 0.4 });
             if (bones.l_elbow) gsap.to(bones.l_elbow.rotation, { x: deg(-80), y: 0, z: 0, duration: 0.4 });
+            
             setTimeout(() => circle_onoma(8), 500); 
         }
         function circle_onoma(step) {
             if (step <= 0) { finalize_gesture(); return; }
-            // Μικρή κίνηση πάνω κάτω από τους ώμους
+            // Κυκλική/πάνω-κάτω κίνηση από τους ώμους
             let x_move = step % 2 === 0 ? 0 : 20;
-            gsap.to(bones.r_shoulder.rotation, { x: deg(x_move), duration: 0.2 });
-            gsap.to(bones.l_shoulder.rotation, { x: deg(x_move), duration: 0.2 });
+            gsap.to(bones.r_shoulder.rotation, { x: deg(x_move), duration: 0.25 });
+            gsap.to(bones.l_shoulder.rotation, { x: deg(x_move), duration: 0.25 });
             
-            setTimeout(() => circle_onoma(step - 1), 220);
+            setTimeout(() => circle_onoma(step - 1), 260);
         }
 
         // --- ΟΥΡΑ ΚΙΝΗΣΕΩΝ & ΦΩΝΗ ---
