@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Web Avatar - Final Locked Version</title>
+    <title>Web Avatar - Final Fixed Fingers</title>
     <style>
         body { margin: 0; overflow: hidden; background-color: #f0e6dc; font-family: 'Segoe UI', sans-serif; }
         #canvas-container { width: 100vw; height: 100vh; display: block; }
@@ -95,21 +95,24 @@
             });
         }
 
-        // --- ΔΙΟΡΘΩΜΕΝΟ ΦΥΣΙΚΟ ΚΛΕΙΣΙΜΟ (ΓΡΟΘΙΑ) ---
+        // --- Η ΔΙΟΡΘΩΜΕΝΗ naturalCurl ΠΟΥ ΚΛΕΙΝΕΙ ΤΑ ΔΑΧΤΥΛΑ ΠΡΟΣ ΤΑ ΜΕΣΑ ---
         function naturalCurl(side, amount, skipIndex = false, duration = 0.5) {
             const list = side === 'r' ? bones.r_fingers : bones.l_fingers;
-            const dir = side === 'r' ? 1 : -1;
+            // ΑΛΛΑΓΗ ΦΟΡΑΣ: Χρησιμοποιούμε -1 για το δεξί και 1 για το αριστερό για να κλείσουν προς την παλάμη
+            const dir = side === 'r' ? -1 : 1; 
+            
             list.forEach(f => {
                 const name = f.name.toLowerCase();
                 if (skipIndex && name.includes('index')) return;
                 
-                // Προσαρμοσμένα mult για να φαίνεται η γροθιά "γεμάτη" χωρίς clipping
-                let mult = 0.8; // Βάση
-                if (name.includes('2')) mult = 0.7; // Μέση
-                if (name.includes('3')) mult = 0.3; // Άκρη (πολύ λιγότερο λύγισμα για να μη χάνεται)
+                let mult = 1.1; 
+                if (name.includes('2')) mult = 1.3;
+                if (name.includes('3')) mult = 0.7;
                 
+                // Περιστροφή στον άξονα Z (ή X ανάλογα το rig) με τη σωστή φορά
                 gsap.to(f.rotation, { z: deg(amount * dir * mult), duration: duration, ease: "power2.out" });
-                gsap.to(f.rotation, { x: deg(10 * dir), duration: duration }); // Κλίση για όγκο
+                // Μικρή κλίση προς το κέντρο της παλάμης
+                gsap.to(f.rotation, { x: deg(15 * (side === 'r' ? 1 : -1)), duration: duration });
             });
         }
 
@@ -119,10 +122,10 @@
             gsap.to(bones.l_shoulder.rotation, { x: deg(basePose.x), y: deg(-basePose.y), z: deg(-basePose.z), duration: speed });
             [bones.r_elbow, bones.l_elbow, bones.r_wrist, bones.l_wrist].forEach(b => { if(b) gsap.to(b.rotation, { x: 0, y: 0, z: 0, duration: speed }); });
             bones.r_fingers.concat(bones.l_fingers).forEach(f => gsap.to(f.rotation, { x:0, y:0, z:0, duration: speed }));
-            is_busy = false;
+            setTimeout(() => { is_busy = false; }, speed * 1000);
         }
 
-        // --- ΚΙΝΗΣΕΙΣ (ΑΠΑΡΑΓΚΛΙΤΕΣ ΟΠΩΣ ΤΙΣ ΖΗΤΗΣΕΣ) ---
+        // --- ΚΙΝΗΣΕΙΣ (Locked Coordinates) ---
 
         function gesture_efcharisto() {
             is_busy = true;
@@ -133,10 +136,11 @@
                 gsap.to(bones.r_elbow.rotation, { x: deg(91), y: deg(-24), z: deg(-107), duration: 0.5 });
                 gsap.to(bones.l_shoulder.rotation, { x: deg(52), y: deg(27), z: deg(24), duration: 0.5 });
                 gsap.to(bones.l_elbow.rotation, { x: deg(91), y: deg(24), z: deg(107), duration: 0.5 });
-                const pulse = gsap.timeline({ repeat: 2, onComplete: finalize_gesture });
-                pulse.to({}, { duration: 0.1, onStart: () => { naturalCurl('r', 70); naturalCurl('l', 70); } })
+                
+                const pulse = gsap.timeline({ repeat: 2, onComplete: resetPose });
+                pulse.to({}, { duration: 0.1, onStart: () => { naturalCurl('r', 75); naturalCurl('l', 75); } })
                      .to({}, { duration: 0.35 })
-                     .to({}, { duration: 0.1, onStart: () => { naturalCurl('r', 25); naturalCurl('l', 25); } })
+                     .to({}, { duration: 0.1, onStart: () => { naturalCurl('r', 20); naturalCurl('l', 20); } })
                      .to({}, { duration: 0.35 });
             }, 600);
         }
@@ -147,11 +151,11 @@
             gsap.to(bones.r_elbow.rotation, { x: deg(108), y: deg(-31), z: deg(-69), duration: 0.5 });
             setTimeout(() => {
                 gsap.to(bones.r_wrist.rotation, { y: deg(-65), duration: 0.3 });
-                naturalCurl('r', 85, true); 
+                naturalCurl('r', 90, true); 
                 const index = bones.r_fingers.filter(f => f.name.toLowerCase().includes('index'));
-                const flick = gsap.timeline({ repeat: 1, onComplete: finalize_gesture });
-                flick.to(index.map(b=>b.rotation), { z: deg(60), duration: 0.15, ease: "power1.inOut" })
-                     .to(index.map(b=>b.rotation), { z: deg(10), duration: 0.15, ease: "power1.inOut" });
+                const flick = gsap.timeline({ repeat: 1, onComplete: resetPose });
+                flick.to(index.map(b=>b.rotation), { z: deg(-60), duration: 0.15 }) // Επίσης διόρθωση φοράς εδώ
+                     .to(index.map(b=>b.rotation), { z: deg(-10), duration: 0.15 });
             }, 600);
         }
 
@@ -162,7 +166,7 @@
             setTimeout(() => {
                 gsap.to(bones.r_shoulder.rotation, { x: deg(52), y: deg(7), z: deg(-34), duration: 0.5 });
                 gsap.to(bones.r_elbow.rotation, { x: deg(21), y: deg(-44), z: deg(-121), duration: 0.5 });
-                const tl = gsap.timeline({ repeat: 2, onComplete: finalize_gesture });
+                const tl = gsap.timeline({ repeat: 2, onComplete: resetPose });
                 tl.to(bones.r_wrist.rotation, { y: deg(40), duration: 0.4 }).to(bones.r_wrist.rotation, { y: deg(-40), duration: 0.4 });
             }, 600);
         }
@@ -172,7 +176,7 @@
             gsap.to(bones.r_shoulder.rotation, { x: deg(11), y: deg(18), z: deg(4), duration: 0.5 });
             gsap.to(bones.r_elbow.rotation, { x: deg(-10), y: deg(35), z: deg(-128), duration: 0.5 });
             setTimeout(() => {
-                const tl = gsap.timeline({ repeat: 4, onComplete: finalize_gesture });
+                const tl = gsap.timeline({ repeat: 4, onComplete: resetPose });
                 tl.to(bones.r_wrist.rotation, { z: deg(25), duration: 0.25 }).to(bones.r_wrist.rotation, { z: deg(-25), duration: 0.25 });
             }, 600);
         }
@@ -198,15 +202,13 @@
                         bones.l_wrist.rotation.x = Math.sin(el * 11) * r;
                         bones.l_wrist.rotation.y = -Math.cos(el * 11) * r;
                         requestAnimationFrame(draw);
-                    } else { finalize_gesture(); }
+                    } else { resetPose(); }
                 };
                 draw();
             }, 1000);
         }
 
-        function finalize_gesture() { resetPose(); }
-
-        // --- ΦΩΝΗΤΙΚΟΣ ΕΛΕΓΧΟΣ ΜΕ ΤΗ ΔΙΟΡΘΩΣΗ ΓΙΑ ΤΟ ΟΝΟΜΑ ---
+        // --- ΦΩΝΗΤΙΚΟΣ ΕΛΕΓΧΟΣ ΜΕ ΕΞΥΠΝΗ ΑΝΑΓΝΩΡΙΣΗ ---
         const micBtn = document.getElementById('mic-btn');
         const subtitle = document.getElementById('subtitle');
         let recognition = null;
@@ -223,13 +225,17 @@
                 for (let i = event.resultIndex; i < event.results.length; ++i) {
                     text += event.results[i][0].transcript;
                 }
-                text = text.toLowerCase();
+                text = text.toLowerCase().trim();
                 subtitle.innerText = "Είπες: " + text;
 
                 const now = Date.now();
                 if (is_busy || (now - last_trigger_time < 2000)) return;
 
-                if (text.includes("ευχαριστώ") || text.includes("ευχαριστω")) { 
+                // TRIGGER ΓΙΑ ΤΟ ΟΝΟΜΑ: Πιάνει οποιοδήποτε κείμενο περιέχει τη λέξη "όνομα"
+                if (text.includes("όνομα") || text.includes("ονομα")) { 
+                    last_trigger_time = now; gesture_onoma(); 
+                }
+                else if (text.includes("ευχαριστώ") || text.includes("ευχαριστω")) { 
                     last_trigger_time = now; gesture_efcharisto(); 
                 }
                 else if (text.includes("καλημέρα") || text.includes("καλημερα")) { 
@@ -240,10 +246,6 @@
                 }
                 else if (text.includes("γεια") || text.includes("χαίρετε")) { 
                     last_trigger_time = now; gesture_geia(); 
-                }
-                // Εδώ διορθώθηκε: Αν υπάρχει η λέξη 'όνομα' σε οποιοδήποτε περιεχόμενο, το avatar θα νοηματίσει
-                else if (text.includes("όνομα") || text.includes("ονομα") || text.includes("λένε") || text.includes("ποιο") || text.includes("εσύ")) { 
-                    last_trigger_time = now; gesture_onoma(); 
                 }
             };
             recognition.onend = () => { if(isListening) recognition.start(); };
