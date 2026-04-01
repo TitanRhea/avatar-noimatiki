@@ -120,40 +120,36 @@
             last_activity_time = Date.now();
         }
 
-        // --- ΜΟΝΟ ΤΟ ΕΥΧΑΡΙΣΤΩ ---
+       // --- 1. ΕΥΧΑΡΙΣΤΩ ---
         function gesture_efcharisto() {
             is_busy = true;
             
             // Φάση 1: Δεξί χέρι στο ΣΤΕΡΝΟ
-            // Ώμος πιο χαμηλά (X: 30), προς τα μέσα (Y: -50), Z στο 0 για να μην πετάει ο αγκώνας
-            gsap.to(bones.r_shoulder.rotation, { x: deg(30), y: deg(-50), z: deg(0), duration: 0.5 });
-            // Αγκώνας διπλώνει αρκετά, αλλά όχι υπερβολικά (X: -110)
-            if (bones.r_elbow) gsap.to(bones.r_elbow.rotation, { x: deg(-110), y: 0, z: 0, duration: 0.5 });
-            // Καρπός ελαφρώς λυγισμένος για να "ακουμπάει" στο στήθος (Y: -30)
-            if (bones.r_wrist) gsap.to(bones.r_wrist.rotation, { x: 0, y: deg(-30), z: 0, duration: 0.5 });
+            // X: 30 (κατεβάζει τον ώμο στο ύψος του στήθους), Y: -20 (ελαφρώς μέσα), Z: 17 (ΣΤΑΘΕΡΟ για να μην πετάει ο αγκώνας)
+            gsap.to(bones.r_shoulder.rotation, { x: deg(30), y: deg(-20), z: deg(17), duration: 0.5 });
+            // Ο αγκώνας διπλώνει προς το σώμα
+            if (bones.r_elbow) gsap.to(bones.r_elbow.rotation, { x: deg(-100), y: 0, z: 0, duration: 0.5 });
+            if (bones.r_wrist) gsap.to(bones.r_wrist.rotation, { x: 0, y: 0, z: 0, duration: 0.5 });
 
             // Φάση 2: Δύο χέρια μπροστά
             setTimeout(() => {
-                // Δεξί χέρι ευθεία μπροστά (X: 0, Y: 10), Αγκώνας ελαφρώς λυγισμένος (X: -20)
-                gsap.to(bones.r_shoulder.rotation, { x: deg(0), y: deg(10), z: deg(0), duration: 0.5 });
+                // Δεξί χέρι
+                gsap.to(bones.r_shoulder.rotation, { x: deg(0), y: deg(10), z: deg(17), duration: 0.5 });
                 if (bones.r_elbow) gsap.to(bones.r_elbow.rotation, { x: deg(-20), y: 0, z: 0, duration: 0.5 });
-                if (bones.r_wrist) gsap.to(bones.r_wrist.rotation, { x: 0, y: 0, z: 0, duration: 0.5 });
                 
-                // Αριστερό χέρι ευθεία μπροστά (συμμετρικά Y: -10)
-                gsap.to(bones.l_shoulder.rotation, { x: deg(0), y: deg(-10), z: deg(0), duration: 0.5 });
+                // Αριστερό χέρι
+                gsap.to(bones.l_shoulder.rotation, { x: deg(0), y: deg(-10), z: deg(-17), duration: 0.5 });
                 if (bones.l_elbow) gsap.to(bones.l_elbow.rotation, { x: deg(-20), y: 0, z: 0, duration: 0.5 });
-                if (bones.l_wrist) gsap.to(bones.l_wrist.rotation, { x: 0, y: 0, z: 0, duration: 0.5 });
                 
                 // Ξεκινάει ο παλμός
                 setTimeout(() => pulse_efcharisto(4), 500);
-            }, 800); // 800ms για να προλάβεις να δεις το χέρι στο στέρνο
+            }, 800); 
         }
 
         // Φάση 3: Ο παλμός της γροθιάς
         function pulse_efcharisto(count) {
             if (count <= 0) { finalize_gesture(); return; }
-            // Οι καρποί κάνουν κίνηση πάνω κάτω
-            let wrist_bend = count % 2 === 0 ? 20 : -20;
+            let wrist_bend = count % 2 === 0 ? 30 : -10;
             if (bones.r_wrist) gsap.to(bones.r_wrist.rotation, { x: deg(wrist_bend), duration: 0.25 });
             if (bones.l_wrist) gsap.to(bones.l_wrist.rotation, { x: deg(wrist_bend), duration: 0.25 });
             
