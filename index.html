@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Web Avatar - Final Greek Sign Language</title>
+    <title>Web Avatar - Greek Sign Language</title>
     <style>
         body { margin: 0; overflow: hidden; background-color: #f0e6dc; font-family: 'Segoe UI', sans-serif; }
         #canvas-container { width: 100vw; height: 100vh; display: block; }
@@ -52,9 +52,9 @@
         const scene = new THREE.Scene();
         scene.background = new THREE.Color(0xf0e6dc);
         
-        // ΚΑΜΕΡΑ: Ρυθμισμένη ψηλά και σε σωστή απόσταση για το πάνω μέρος του σώματος
+        // ΚΑΜΕΡΑ: Ρυθμισμένη ψηλά και κεντραρισμένη στο πρόσωπο
         const camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 100);
-        camera.position.set(0, 1.8, 3.2); 
+        camera.position.set(0, 1.8, 3.5); 
 
         const renderer = new THREE.WebGLRenderer({ antialias: true });
         renderer.setSize(window.innerWidth, window.innerHeight);
@@ -62,8 +62,8 @@
         document.getElementById('canvas-container').appendChild(renderer.domElement);
 
         const controls = new THREE.OrbitControls(camera, renderer.domElement);
-        // ΕΣΤΙΑΣΗ: Κοιτάμε το πρόσωπο (1.6 ύψος)
-        controls.target.set(0, 1.6, 0); 
+        // ΕΣΤΙΑΣΗ: Κοιτάμε το κεφάλι/στήθος (1.5 ύψος)
+        controls.target.set(0, 1.5, 0); 
         controls.update();
 
         scene.add(new THREE.AmbientLight(0xffffff, 0.8));
@@ -74,17 +74,17 @@
         let currentModel = null, bones = {}, is_busy = false, gesture_queue = [], last_activity_time = Date.now();
         const deg = (d) => d * (Math.PI / 180);
 
-        // ΟΙ ΣΩΣΤΕΣ ΤΙΜΕΣ ΣΟΥ (X: -36, Y: -41) ΜΕ ΑΝΟΙΓΜΑ (Z: -80)
-        const pose = { x: -36, y: -41, z: -80 };
+        // ΟΙ ΤΙΜΕΣ ΠΟΥ ΒΡΗΚΕΣ ΩΣ ΣΩΣΤΕΣ
+        const pose = { x: -36, y: -41, z: -108 };
 
         function loadAvatar(file) {
             if (currentModel) scene.remove(currentModel);
             bones = {};
             new THREE.GLTFLoader().load(file, (gltf) => {
                 currentModel = gltf.scene;
-                // ΤΟΠΟΘΕΤΗΣΗ: Ανέβηκε στο -0.7 για να είναι ψηλά στην οθόνη
-                currentModel.position.set(0, -0.7, 0); 
-                currentModel.scale.set(1.0, 1.0, 1.0); 
+                // ΤΟΠΟΘΕΤΗΣΗ: Ανέβηκε σημαντικά για να φαίνεται ψηλά
+                currentModel.position.set(0, -0.8, 0); 
+                currentModel.scale.set(1.1, 1.1, 1.1); 
                 scene.add(currentModel);
 
                 currentModel.traverse(n => {
@@ -103,11 +103,11 @@
 
         function resetPose(speed = 0.5) {
             if (!bones.r_shoulder) return;
-            // Επιβολή σειράς YXZ που δούλεψε καλύτερα
+            // Επιβολή σειράς YXZ (Ursina style) που δούλεψε στις δοκιμές σου
             bones.r_shoulder.rotation.order = 'YXZ';
             bones.l_shoulder.rotation.order = 'YXZ';
             
-            // Εφαρμογή των δικών σου μοιρών
+            // Εφαρμογή των ακριβών τιμών σου
             gsap.to(bones.r_shoulder.rotation, { x: deg(pose.x), y: deg(pose.y), z: deg(pose.z), duration: speed });
             gsap.to(bones.l_shoulder.rotation, { x: deg(pose.x), y: deg(-pose.y), z: deg(-pose.z), duration: speed });
             
@@ -115,16 +115,17 @@
             if (bones.l_elbow) gsap.to(bones.l_elbow.rotation, { x: 0, y: 0, z: 0, duration: speed });
         }
 
-        // --- ΚΙΝΗΣΕΙΣ (ΒΑΣΙΣΜΕΝΕΣ ΣΤΗ ΝΕΑ ΣΤΑΣΗ) ---
+        // --- ΚΙΝΗΣΕΙΣ ---
         function gesture_kalimera() {
             is_busy = true;
-            gsap.to(bones.r_shoulder.rotation, { x: deg(10), y: deg(20), z: deg(-20), duration: 0.5 });
+            // Κίνηση βασισμένη στη νέα σου στάση
+            gsap.to(bones.r_shoulder.rotation, { x: deg(10), y: deg(20), z: deg(-30), duration: 0.5 });
             setTimeout(() => { resetPose(); is_busy = false; last_activity_time = Date.now(); }, 1200);
         }
 
         function gesture_geia() {
             is_busy = true;
-            gsap.to(bones.r_shoulder.rotation, { x: deg(0), y: deg(30), z: deg(-40), duration: 0.4 });
+            gsap.to(bones.r_shoulder.rotation, { x: deg(0), y: deg(40), z: deg(-50), duration: 0.4 });
             setTimeout(() => { resetPose(); is_busy = false; last_activity_time = Date.now(); }, 1000);
         }
 
