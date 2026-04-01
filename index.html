@@ -79,8 +79,8 @@
             bones = {};
             loader.load(file, (gltf) => {
                 currentModel = gltf.scene;
-                // ΤΟΠΟΘΕΤΗΣΗ: Χρήση θετικού αριθμού (0.3) για να ανέβει ψηλά, όπως πρότεινες
-                currentModel.position.set(0, 0.3, 0); 
+                // ΤΟΠΟΘΕΤΗΣΗ: Χρήση του 1 για να ανέβει ακόμα πιο ψηλά
+                currentModel.position.set(0, 1, 0); 
                 currentModel.scale.set(1.1, 1.1, 1.1); 
                 scene.add(currentModel);
 
