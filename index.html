@@ -3,134 +3,61 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Web Avatar - Dual Arm Calibration Tool</title>
+    <title>Web Avatar - Final Sign Language Version</title>
     <style>
         body { margin: 0; overflow: hidden; background-color: #f0e6dc; font-family: 'Segoe UI', sans-serif; }
         #canvas-container { width: 100vw; height: 100vh; display: block; }
-        
-        #slider-panel {
-            position: absolute; top: 10px; left: 10px; background: rgba(255,255,255,0.95);
-            padding: 15px; border-radius: 10px; pointer-events: auto; text-align: left;
-            box-shadow: 0 4px 15px rgba(0,0,0,0.2); font-size: 14px;
-            display: flex; gap: 30px; /* Βάζει τα δύο χέρια δίπλα-δίπλα */
-        }
-        
-        h3 { margin-top: 0; margin-bottom: 10px; color: #333; font-size: 16px; border-bottom: 2px solid #ddd; padding-bottom: 5px; }
-        .slider-row { margin-bottom: 8px; }
-        .slider-row label { display: inline-block; width: 75px; font-weight: bold; color: #555; }
-        .slider-row input { width: 120px; vertical-align: middle; }
-        .val-disp { display: inline-block; width: 35px; text-align: right; font-family: monospace; font-weight: bold; color: #0066cc; }
-        
         #ui-layer {
-            position: absolute; bottom: 20px; left: 50%; transform: translateX(-50%);
+            position: absolute; bottom: 30px; left: 50%; transform: translateX(-50%);
             text-align: center; width: 100%; pointer-events: none;
         }
-        select { font-size: 16px; padding: 10px 20px; border-radius: 8px; cursor: pointer; pointer-events: auto; border: 1px solid #ccc; font-weight: bold; }
+        #subtitle {
+            font-size: 24px; color: #333; background: rgba(255, 255, 255, 0.95);
+            padding: 12px 25px; border-radius: 20px; display: inline-block; 
+            margin-bottom: 15px; font-weight: bold; box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+            min-width: 320px;
+        }
+        .controls { pointer-events: auto; }
+        select, button { 
+            font-size: 16px; padding: 12px 25px; margin: 5px; border-radius: 10px; 
+            cursor: pointer; border: 1px solid #ddd; background: white; transition: 0.3s;
+        }
+        #mic-btn { background-color: #4CAF50; color: white; border: none; font-weight: bold; }
+        #mic-btn.listening { background-color: #f44336; animation: pulse 1.5s infinite; }
+        @keyframes pulse { 0% { transform: scale(1); } 50% { transform: scale(1.05); } 100% { transform: scale(1); } }
     </style>
 </head>
 <body>
 
     <div id="canvas-container"></div>
     
-    <div id="slider-panel">
-        
-        <div>
-            <h3>Δεξί Χέρι (Μπροστά)</h3>
-            <div class="slider-row">
-                <label>Ώμος X:</label>
-                <input type="range" id="r-sh-x" min="-180" max="180" value="0" oninput="updatePose()">
-                <span class="val-disp" id="val-r-sh-x">0</span>
-            </div>
-            <div class="slider-row">
-                <label>Ώμος Y:</label>
-                <input type="range" id="r-sh-y" min="-180" max="180" value="10" oninput="updatePose()">
-                <span class="val-disp" id="val-r-sh-y">10</span>
-            </div>
-            <div class="slider-row">
-                <label>Ώμος Z:</label>
-                <input type="range" id="r-sh-z" min="-180" max="180" value="10" oninput="updatePose()">
-                <span class="val-disp" id="val-r-sh-z">10</span>
-            </div>
-            <hr style="border: 0.5px solid #eee; margin: 10px 0;">
-            <div class="slider-row">
-                <label>Αγκώνας X:</label>
-                <input type="range" id="r-el-x" min="-180" max="180" value="-20" oninput="updatePose()">
-                <span class="val-disp" id="val-r-el-x">-20</span>
-            </div>
-            <div class="slider-row">
-                <label>Αγκώνας Y:</label>
-                <input type="range" id="r-el-y" min="-180" max="180" value="0" oninput="updatePose()">
-                <span class="val-disp" id="val-r-el-y">0</span>
-            </div>
-            <div class="slider-row">
-                <label>Αγκώνας Z:</label>
-                <input type="range" id="r-el-z" min="-180" max="180" value="0" oninput="updatePose()">
-                <span class="val-disp" id="val-r-el-z">0</span>
-            </div>
-        </div>
-
-        <div>
-            <h3>Αριστερό Χέρι (Μπροστά)</h3>
-            <div class="slider-row">
-                <label>Ώμος X:</label>
-                <input type="range" id="l-sh-x" min="-180" max="180" value="0" oninput="updatePose()">
-                <span class="val-disp" id="val-l-sh-x">0</span>
-            </div>
-            <div class="slider-row">
-                <label>Ώμος Y:</label>
-                <input type="range" id="l-sh-y" min="-180" max="180" value="-10" oninput="updatePose()">
-                <span class="val-disp" id="val-l-sh-y">-10</span>
-            </div>
-            <div class="slider-row">
-                <label>Ώμος Z:</label>
-                <input type="range" id="l-sh-z" min="-180" max="180" value="-10" oninput="updatePose()">
-                <span class="val-disp" id="val-l-sh-z">-10</span>
-            </div>
-            <hr style="border: 0.5px solid #eee; margin: 10px 0;">
-            <div class="slider-row">
-                <label>Αγκώνας X:</label>
-                <input type="range" id="l-el-x" min="-180" max="180" value="-20" oninput="updatePose()">
-                <span class="val-disp" id="val-l-el-x">-20</span>
-            </div>
-            <div class="slider-row">
-                <label>Αγκώνας Y:</label>
-                <input type="range" id="l-el-y" min="-180" max="180" value="0" oninput="updatePose()">
-                <span class="val-disp" id="val-l-el-y">0</span>
-            </div>
-            <div class="slider-row">
-                <label>Αγκώνας Z:</label>
-                <input type="range" id="l-el-z" min="-180" max="180" value="0" oninput="updatePose()">
-                <span class="val-disp" id="val-l-el-z">0</span>
-            </div>
-        </div>
-
-    </div>
-
     <div id="ui-layer">
-        <select id="avatar-select" onchange="loadAvatar(this.value)">
-            <option value="rhea.glb">Avatar: Rhea (Γυναίκα)</option>
-            <option value="titan.glb">Avatar: Titan (Άνδρας)</option>
-        </select>
+        <div id="subtitle">Περιμένω φωνητική εντολή...</div><br>
+        <div class="controls">
+            <select id="avatar-select" onchange="loadAvatar(this.value)">
+                <option value="rhea.glb">Avatar: Rhea (Γυναίκα)</option>
+                <option value="titan.glb">Avatar: Titan (Άνδρας)</option>
+            </select>
+            <button id="mic-btn">🎙️ Ενεργοποίηση Μικροφώνου</button>
+        </div>
     </div>
 
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/GLTFLoader.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/gsap.min.js"></script>
 
     <script>
         const scene = new THREE.Scene();
         scene.background = new THREE.Color(0xf0e6dc);
-        
         const camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 100);
-        camera.position.set(0, 1.5, 3.5); 
-
+        camera.position.set(0, 1.8, 4.5); 
         const renderer = new THREE.WebGLRenderer({ antialias: true });
         renderer.setSize(window.innerWidth, window.innerHeight);
         renderer.outputEncoding = THREE.sRGBEncoding;
         document.getElementById('canvas-container').appendChild(renderer.domElement);
-
         const controls = new THREE.OrbitControls(camera, renderer.domElement);
-        controls.target.set(0, 1.2, 0); 
+        controls.target.set(0, 1.5, 0); 
         controls.update();
 
         scene.add(new THREE.AmbientLight(0xffffff, 0.8));
@@ -138,18 +65,20 @@
         light.position.set(5, 10, 5);
         scene.add(light);
 
-        let currentModel = null, bones = {};
+        let currentModel = null, bones = {}, is_busy = false, gesture_queue = [], last_activity_time = Date.now();
         const deg = (d) => d * (Math.PI / 180);
+
+        // ΒΑΣΙΚΗ ΠΟΖΑ Α
+        const basePose = { x: 54, y: 30, z: 17 };
 
         function loadAvatar(file) {
             if (currentModel) scene.remove(currentModel);
-            bones = {};
+            bones = { r_fingers: [], l_fingers: [], r_index: null, l_index: null };
             new THREE.GLTFLoader().load(file, (gltf) => {
                 currentModel = gltf.scene;
                 currentModel.position.set(0, 0.6, 0); 
                 currentModel.scale.set(1.1, 1.1, 1.1); 
                 scene.add(currentModel);
-
                 currentModel.traverse(n => {
                     if (n.isMesh && n.name.toLowerCase().includes('cube')) n.visible = false;
                     if (n.isBone) {
@@ -158,60 +87,135 @@
                         if (b.endsWith('leftarm')) bones.l_shoulder = n;
                         if (b.endsWith('rightforearm')) bones.r_elbow = n;
                         if (b.endsWith('leftforearm')) bones.l_elbow = n;
+                        if (b.endsWith('righthand')) bones.r_wrist = n;
+                        if (b.endsWith('lefthand')) bones.l_wrist = n;
+                        // Δάχτυλα
+                        if (b.includes('righthand') && !b.endsWith('righthand')) {
+                            bones.r_fingers.push(n);
+                            if (b.includes('index')) bones.r_index = n;
+                        }
+                        if (b.includes('lefthand') && !b.endsWith('lefthand')) {
+                            bones.l_fingers.push(n);
+                            if (b.includes('index')) bones.l_index = n;
+                        }
                     }
                 });
-                
-                // Set default order to avoid weird twisting
-                if(bones.r_shoulder) bones.r_shoulder.rotation.order = 'XYZ';
-                if(bones.l_shoulder) bones.l_shoulder.rotation.order = 'XYZ';
-                
-                // Εφαρμόζει τις αρχικές τιμές των sliders με το που φορτώνει
-                updatePose();
+                resetPose(0.1);
             });
         }
 
-        function updatePose() {
-            if (!bones.r_shoulder || !bones.l_shoulder) return;
-
-            // Παίρνουμε τις τιμές για το ΔΕΞΙ χέρι
-            const rsx = document.getElementById('r-sh-x').value;
-            const rsy = document.getElementById('r-sh-y').value;
-            const rsz = document.getElementById('r-sh-z').value;
-            const rex = document.getElementById('r-el-x').value;
-            const rey = document.getElementById('r-el-y').value;
-            const rez = document.getElementById('r-el-z').value;
-
-            // Παίρνουμε τις τιμές για το ΑΡΙΣΤΕΡΟ χέρι
-            const lsx = document.getElementById('l-sh-x').value;
-            const lsy = document.getElementById('l-sh-y').value;
-            const lsz = document.getElementById('l-sh-z').value;
-            const lex = document.getElementById('l-el-x').value;
-            const ley = document.getElementById('l-el-y').value;
-            const lez = document.getElementById('l-el-z').value;
-
-            // Ενημερώνουμε τα νουμεράκια στην οθόνη (ΔΕΞΙ)
-            document.getElementById('val-r-sh-x').innerText = rsx;
-            document.getElementById('val-r-sh-y').innerText = rsy;
-            document.getElementById('val-r-sh-z').innerText = rsz;
-            document.getElementById('val-r-el-x').innerText = rex;
-            document.getElementById('val-r-el-y').innerText = rey;
-            document.getElementById('val-r-el-z').innerText = rez;
-
-            // Ενημερώνουμε τα νουμεράκια στην οθόνη (ΑΡΙΣΤΕΡΟ)
-            document.getElementById('val-l-sh-x').innerText = lsx;
-            document.getElementById('val-l-sh-y').innerText = lsy;
-            document.getElementById('val-l-sh-z').innerText = lsz;
-            document.getElementById('val-l-el-x').innerText = lex;
-            document.getElementById('val-l-el-y').innerText = ley;
-            document.getElementById('val-l-el-z').innerText = lez;
-
-            // Εφαρμόζουμε την κίνηση ζωντανά στο μοντέλο
-            bones.r_shoulder.rotation.set(deg(rsx), deg(rsy), deg(rsz));
-            if(bones.r_elbow) bones.r_elbow.rotation.set(deg(rex), deg(rey), deg(rez));
-
-            bones.l_shoulder.rotation.set(deg(lsx), deg(lsy), deg(lsz));
-            if(bones.l_elbow) bones.l_elbow.rotation.set(deg(lex), deg(ley), deg(lez));
+        function resetPose(speed = 0.5) {
+            if (!bones.r_shoulder) return;
+            gsap.to(bones.r_shoulder.rotation, { x: deg(basePose.x), y: deg(basePose.y), z: deg(basePose.z), duration: speed });
+            gsap.to(bones.l_shoulder.rotation, { x: deg(basePose.x), y: deg(-basePose.y), z: deg(-basePose.z), duration: speed });
+            [bones.r_elbow, bones.l_elbow, bones.r_wrist, bones.l_wrist].forEach(b => { if(b) gsap.to(b.rotation, { x: 0, y: 0, z: 0, duration: speed }); });
+            bones.r_fingers.forEach(f => gsap.to(f.rotation, { x:0, y:0, z:0, duration: speed }));
+            bones.l_fingers.forEach(f => gsap.to(f.rotation, { x:0, y:0, z:0, duration: speed }));
         }
+
+        // --- ΚΙΝΗΣΕΙΣ ---
+
+        // 1. ΕΥΧΑΡΙΣΤΩ
+        function gesture_efcharisto() {
+            is_busy = true;
+            // Φάση 1: Στέρνο
+            gsap.to(bones.r_shoulder.rotation, { x: deg(27), y: deg(-35), z: deg(-26), duration: 0.5 });
+            gsap.to(bones.r_elbow.rotation, { x: deg(25), y: deg(-26), z: deg(-107), duration: 0.5 });
+            setTimeout(() => {
+                // Φάση 2: Μπροστά
+                gsap.to(bones.r_shoulder.rotation, { x: deg(52), y: deg(-27), z: deg(-24), duration: 0.5 });
+                gsap.to(bones.r_elbow.rotation, { x: deg(91), y: deg(-24), z: deg(-107), duration: 0.5 });
+                gsap.to(bones.l_shoulder.rotation, { x: deg(52), y: deg(27), z: deg(24), duration: 0.5 });
+                gsap.to(bones.l_elbow.rotation, { x: deg(91), y: deg(24), z: deg(107), duration: 0.5 });
+                // Γροθιές
+                bones.r_fingers.forEach(f => gsap.to(f.rotation, { z: deg(70), duration: 0.3 }));
+                bones.l_fingers.forEach(f => gsap.to(f.rotation, { z: deg(-70), duration: 0.3 }));
+                setTimeout(() => finalize_gesture(), 1000);
+            }, 600);
+        }
+
+        // 2. ΚΑΛΗΜΕΡΑ
+        function gesture_kalimera() {
+            is_busy = true;
+            // Φάση 1: Μάζεμα
+            gsap.to(bones.r_shoulder.rotation, { x: deg(70), y: deg(14), z: deg(-17), duration: 0.5 });
+            gsap.to(bones.r_elbow.rotation, { x: deg(108), y: deg(-31), z: deg(-69), duration: 0.5 });
+            setTimeout(() => {
+                // Φάση 2: Στροφή καρπού & Δείκτης
+                gsap.to(bones.r_wrist.rotation, { y: deg(-40), duration: 0.3 });
+                bones.r_fingers.forEach(f => { if(!f.name.includes('Index')) gsap.to(f.rotation, { z: deg(80), duration: 0.3 }); });
+                // Παλμός δείκτη
+                const tl = gsap.timeline({ repeat: 3, onComplete: finalize_gesture });
+                tl.to(bones.r_index.rotation, { z: deg(40), duration: 0.2 }).to(bones.r_index.rotation, { z: deg(0), duration: 0.2 });
+            }, 600);
+        }
+
+        // 3. ΚΑΛΟ ΜΕΣΗΜΕΡΙ
+        function gesture_mesimeri() {
+            is_busy = true;
+            // Φάση 1: Μάζεμα
+            gsap.to(bones.r_shoulder.rotation, { x: deg(70), y: deg(14), z: deg(-17), duration: 0.5 });
+            gsap.to(bones.r_elbow.rotation, { x: deg(108), y: deg(-31), z: deg(-69), duration: 0.5 });
+            setTimeout(() => {
+                // Φάση 2: Άνοιγμα Μπροστά
+                gsap.to(bones.r_shoulder.rotation, { x: deg(52), y: deg(7), z: deg(-34), duration: 0.5 });
+                gsap.to(bones.r_elbow.rotation, { x: deg(21), y: deg(-44), z: deg(-121), duration: 0.5 });
+                // Πέρα-δώθε (οριζόντιο)
+                const tl = gsap.timeline({ repeat: 2, onComplete: finalize_gesture });
+                tl.to(bones.r_wrist.rotation, { y: deg(30), duration: 0.3 }).to(bones.r_wrist.rotation, { y: deg(-30), duration: 0.3 });
+            }, 600);
+        }
+
+        // 4. ΓΕΙΑ
+        function gesture_geia() {
+            is_busy = true;
+            gsap.to(bones.r_shoulder.rotation, { x: deg(11), y: deg(18), z: deg(4), duration: 0.5 });
+            gsap.to(bones.r_elbow.rotation, { x: deg(-10), y: deg(35), z: deg(-128), duration: 0.5 });
+            setTimeout(() => {
+                const tl = gsap.timeline({ repeat: 4, onComplete: finalize_gesture });
+                tl.to(bones.r_wrist.rotation, { z: deg(20), duration: 0.2 }).to(bones.r_wrist.rotation, { z: deg(-20), duration: 0.2 });
+            }, 600);
+        }
+
+        // 5. ΟΝΟΜΑ / ΕΣΥ
+        function gesture_onoma() {
+            is_busy = true;
+            // Φάση 1: Δείξιμο (Εσύ)
+            gsap.to(bones.r_shoulder.rotation, { x: deg(39), y: deg(-24), z: deg(-58), duration: 0.5 });
+            gsap.to(bones.r_elbow.rotation, { x: deg(25), y: deg(46), z: deg(-31), duration: 0.5 });
+            bones.r_fingers.forEach(f => { if(!f.name.includes('Index')) gsap.to(f.rotation, { z: deg(80), duration: 0.3 }); });
+            
+            setTimeout(() => {
+                // Φάση 2: Δύο χέρια & Κυκλική
+                gsap.to(bones.r_shoulder.rotation, { x: deg(25), y: deg(7), z: deg(-51), duration: 0.5 });
+                gsap.to(bones.r_elbow.rotation, { x: deg(59), y: deg(1), z: deg(-48), duration: 0.5 });
+                gsap.to(bones.l_shoulder.rotation, { x: deg(25), y: deg(-7), z: deg(51), duration: 0.5 });
+                gsap.to(bones.l_elbow.rotation, { x: deg(59), y: deg(1), z: deg(48), duration: 0.5 });
+                // Μόνο δείκτες
+                bones.l_fingers.forEach(f => { if(!f.name.includes('Index')) gsap.to(f.rotation, { z: deg(-80), duration: 0.3 }); });
+                
+                const tl = gsap.timeline({ repeat: 2, onComplete: finalize_gesture });
+                tl.to([bones.r_wrist.rotation, bones.l_wrist.rotation], { x: deg(20), duration: 0.4 })
+                  .to([bones.r_wrist.rotation, bones.l_wrist.rotation], { x: deg(-20), duration: 0.4 });
+            }, 1000);
+        }
+
+        function finalize_gesture() { resetPose(); is_busy = false; last_activity_time = Date.now(); }
+
+        // Speech Logic
+        const micBtn = document.getElementById('mic-btn');
+        let rec = new (window.webkitSpeechRecognition || window.SpeechRecognition)();
+        rec.lang = 'el-GR'; rec.continuous = true;
+        rec.onresult = (e) => {
+            let t = e.results[e.results.length-1][0].transcript.toLowerCase().trim();
+            document.getElementById('subtitle').innerText = "Είπες: " + t;
+            if (t.includes("ευχαριστώ")) gesture_efcharisto();
+            else if (t.includes("καλημέρα")) gesture_kalimera();
+            else if (t.includes("μεσημέρι")) gesture_mesimeri();
+            else if (t.includes("γεια")) gesture_geia();
+            else if (t.includes("όνομα") || t.includes("εσύ")) gesture_onoma();
+        };
+        micBtn.onclick = () => { rec.start(); micBtn.classList.add('listening'); };
 
         loadAvatar('rhea.glb');
         function animate() { requestAnimationFrame(animate); renderer.render(scene, camera); }
