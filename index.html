@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Web Avatar - Final Refined GSL</title>
+    <title>Web Avatar - Professional Sign Language</title>
     <style>
         body { margin: 0; overflow: hidden; background-color: #f0e6dc; font-family: 'Segoe UI', sans-serif; }
         #canvas-container { width: 100vw; height: 100vh; display: block; }
@@ -12,18 +12,18 @@
             text-align: center; width: 100%; pointer-events: none;
         }
         #subtitle {
-            font-size: 22px; color: #333; background: rgba(255, 255, 255, 0.95);
+            font-size: 24px; color: #333; background: rgba(255, 255, 255, 0.95);
             padding: 12px 25px; border-radius: 20px; display: inline-block; 
             margin-bottom: 15px; font-weight: bold; box-shadow: 0 4px 15px rgba(0,0,0,0.1);
-            min-width: 380px;
+            min-width: 350px;
         }
         .controls { pointer-events: auto; }
-        button { 
+        select, button { 
             font-size: 16px; padding: 12px 25px; margin: 5px; border-radius: 10px; 
-            cursor: pointer; border: none; background: #4CAF50; color: white; font-weight: bold; transition: 0.3s;
+            cursor: pointer; border: 1px solid #ddd; background: white; transition: 0.3s;
         }
-        button.listening { background-color: #f44336; }
-        select { font-size: 16px; padding: 12px; border-radius: 10px; border: 1px solid #ddd; }
+        #mic-btn { background-color: #4CAF50; color: white; border: none; font-weight: bold; width: 220px; }
+        #mic-btn.listening { background-color: #f44336; }
     </style>
 </head>
 <body>
@@ -31,13 +31,13 @@
     <div id="canvas-container"></div>
     
     <div id="ui-layer">
-        <div id="subtitle">Μικρόφωνο Κλειστό</div><br>
+        <div id="subtitle">Μικρόφωνο Απενεργοποιημένο</div><br>
         <div class="controls">
             <select id="avatar-select" onchange="loadAvatar(this.value)">
                 <option value="rhea.glb">Avatar: Rhea (Γυναίκα)</option>
                 <option value="titan.glb">Avatar: Titan (Άνδρας)</option>
             </select>
-            <button id="mic-btn">🎙️ Ενεργοποίηση</button>
+            <button id="mic-btn">🎙️ Άνοιγμα Μικροφώνου</button>
         </div>
     </div>
 
@@ -60,12 +60,13 @@
         controls.update();
 
         scene.add(new THREE.AmbientLight(0xffffff, 0.8));
-        const light = new THREE.DirectionalLight(0xffffff, 0.6);
+        const light = new THREE.DirectionalLight(0xffffff, 0.5);
         light.position.set(5, 10, 5);
         scene.add(light);
 
-        let currentModel = null, bones = {}, is_busy = false;
+        let currentModel = null, bones = {}, is_busy = false, last_activity_time = Date.now();
         const deg = (d) => d * (Math.PI / 180);
+
         const basePose = { x: 54, y: 30, z: 17 };
 
         function loadAvatar(file) {
@@ -86,6 +87,8 @@
                         if (b.endsWith('leftforearm')) bones.l_elbow = n;
                         if (b.endsWith('righthand')) bones.r_wrist = n;
                         if (b.endsWith('lefthand')) bones.l_wrist = n;
+                        
+                        // Πιάσιμο όλων των αρθρώσεων των δακτύλων
                         if (b.includes('righthand') && !b.endsWith('righthand')) bones.r_fingers.push(n);
                         if (b.includes('lefthand') && !b.endsWith('lefthand')) bones.l_fingers.push(n);
                     }
@@ -94,21 +97,13 @@
             });
         }
 
-        // --- ΦΥΣΙΚΟ ΚΛΕΙΣΙΜΟ ΔΑΚΤΥΛΩΝ ---
-        function naturalCurl(side, amount, skipIndex = false, duration = 0.5) {
+        // Βοηθητική συνάρτηση για κλείσιμο δακτύλων (Fist)
+        function curlFingers(side, amount, skipIndex = false) {
             const list = side === 'r' ? bones.r_fingers : bones.l_fingers;
-            const dir = side === 'r' ? 1 : -1;
+            const direction = side === 'r' ? 1 : -1;
             list.forEach(f => {
-                const name = f.name.toLowerCase();
-                if (skipIndex && name.includes('index')) return;
-                
-                let mult = 0.7; // Βάση
-                if (name.includes('2')) mult = 0.9; // Μέση
-                if (name.includes('3')) mult = 0.5; // Άκρη (λιγότερο λύγισμα για να μη χάνεται)
-                
-                gsap.to(f.rotation, { z: deg(amount * dir * mult), duration: duration, ease: "power2.out" });
-                // Μικρή κλίση X για να φαίνεται η παλάμη γεμάτη
-                gsap.to(f.rotation, { x: deg(8 * dir), duration: duration });
+                if (skipIndex && f.name.toLowerCase().includes('index')) return;
+                gsap.to(f.rotation, { z: deg(amount * direction), duration: 0.5 });
             });
         }
 
@@ -126,19 +121,13 @@
             is_busy = true;
             gsap.to(bones.r_shoulder.rotation, { x: deg(27), y: deg(-35), z: deg(-26), duration: 0.5 });
             gsap.to(bones.r_elbow.rotation, { x: deg(25), y: deg(-26), z: deg(-107), duration: 0.5 });
-            
             setTimeout(() => {
                 gsap.to(bones.r_shoulder.rotation, { x: deg(52), y: deg(-27), z: deg(-24), duration: 0.5 });
                 gsap.to(bones.r_elbow.rotation, { x: deg(91), y: deg(-24), z: deg(-107), duration: 0.5 });
                 gsap.to(bones.l_shoulder.rotation, { x: deg(52), y: deg(27), z: deg(24), duration: 0.5 });
                 gsap.to(bones.l_elbow.rotation, { x: deg(91), y: deg(24), z: deg(107), duration: 0.5 });
-                
-                // Παλμός γροθιάς (pulse)
-                const pulse = gsap.timeline({ repeat: 2, onComplete: finalize_gesture });
-                pulse.to({}, { duration: 0.1, onStart: () => { naturalCurl('r', 70); naturalCurl('l', 70); } })
-                     .to({}, { duration: 0.35 })
-                     .to({}, { duration: 0.1, onStart: () => { naturalCurl('r', 20); naturalCurl('l', 20); } })
-                     .to({}, { duration: 0.35 });
+                curlFingers('r', 85); curlFingers('l', 85);
+                setTimeout(finalize_gesture, 1200);
             }, 600);
         }
 
@@ -147,13 +136,12 @@
             gsap.to(bones.r_shoulder.rotation, { x: deg(70), y: deg(14), z: deg(-17), duration: 0.5 });
             gsap.to(bones.r_elbow.rotation, { x: deg(108), y: deg(-31), z: deg(-69), duration: 0.5 });
             setTimeout(() => {
-                gsap.to(bones.r_wrist.rotation, { y: deg(-65), duration: 0.3 });
-                naturalCurl('r', 85, true); 
-                const index = bones.r_fingers.filter(f => f.name.toLowerCase().includes('index'));
-                // ΜΟΝΟ 2 κουνήματα (repeat: 1)
-                const flick = gsap.timeline({ repeat: 1, onComplete: finalize_gesture });
-                flick.to(index.map(b=>b.rotation), { z: deg(60), duration: 0.15, ease: "power1.inOut" })
-                     .to(index.map(b=>b.rotation), { z: deg(10), duration: 0.15, ease: "power1.inOut" });
+                gsap.to(bones.r_wrist.rotation, { y: deg(-60), duration: 0.3 }); // Στροφή αντιβραχίου
+                curlFingers('r', 90, true); // Κλείσε όλα εκτός δείκτη
+                const indexBones = bones.r_fingers.filter(f => f.name.toLowerCase().includes('index'));
+                const tl = gsap.timeline({ repeat: 3, onComplete: finalize_gesture });
+                tl.to(indexBones.map(b => b.rotation), { z: deg(45), duration: 0.2 })
+                  .to(indexBones.map(b => b.rotation), { z: deg(0), duration: 0.2 });
             }, 600);
         }
 
@@ -165,7 +153,7 @@
                 gsap.to(bones.r_shoulder.rotation, { x: deg(52), y: deg(7), z: deg(-34), duration: 0.5 });
                 gsap.to(bones.r_elbow.rotation, { x: deg(21), y: deg(-44), z: deg(-121), duration: 0.5 });
                 const tl = gsap.timeline({ repeat: 2, onComplete: finalize_gesture });
-                tl.to(bones.r_wrist.rotation, { y: deg(40), duration: 0.4 }).to(bones.r_wrist.rotation, { y: deg(-40), duration: 0.4 });
+                tl.to(bones.r_wrist.rotation, { y: deg(35), duration: 0.3 }).to(bones.r_wrist.rotation, { y: deg(-35), duration: 0.3 });
             }, 600);
         }
 
@@ -175,7 +163,7 @@
             gsap.to(bones.r_elbow.rotation, { x: deg(-10), y: deg(35), z: deg(-128), duration: 0.5 });
             setTimeout(() => {
                 const tl = gsap.timeline({ repeat: 4, onComplete: finalize_gesture });
-                tl.to(bones.r_wrist.rotation, { z: deg(25), duration: 0.25 }).to(bones.r_wrist.rotation, { z: deg(-25), duration: 0.25 });
+                tl.to(bones.r_wrist.rotation, { z: deg(25), duration: 0.2 }).to(bones.r_wrist.rotation, { z: deg(-25), duration: 0.2 });
             }, 600);
         }
 
@@ -184,35 +172,37 @@
             // Φάση 1: Εσύ
             gsap.to(bones.r_shoulder.rotation, { x: deg(39), y: deg(-24), z: deg(-58), duration: 0.5 });
             gsap.to(bones.r_elbow.rotation, { x: deg(25), y: deg(46), z: deg(-31), duration: 0.5 });
-            naturalCurl('r', 90, true);
+            curlFingers('r', 90, true);
             
             setTimeout(() => {
-                // Φάση 2: Όνομα
+                // Φάση 2: Όνομα (Κυκλάκια)
                 gsap.to(bones.r_shoulder.rotation, { x: deg(25), y: deg(7), z: deg(-51), duration: 0.5 });
                 gsap.to(bones.r_elbow.rotation, { x: deg(59), y: deg(1), z: deg(-48), duration: 0.5 });
                 gsap.to(bones.l_shoulder.rotation, { x: deg(25), y: deg(-7), z: deg(51), duration: 0.5 });
                 gsap.to(bones.l_elbow.rotation, { x: deg(59), y: deg(1), z: deg(48), duration: 0.5 });
-                naturalCurl('l', 90, true);
+                curlFingers('l', 90, true);
 
+                // Η κυκλική κίνηση (Animation Loop)
                 let startTime = Date.now();
-                const drawCircles = () => {
+                const animateCircles = () => {
                     let elapsed = (Date.now() - startTime) / 1000;
-                    if (elapsed < 3.2) {
-                        const radius = 0.24;
-                        bones.r_wrist.rotation.x = Math.sin(elapsed * 11) * radius;
-                        bones.r_wrist.rotation.y = Math.cos(elapsed * 11) * radius;
-                        bones.l_wrist.rotation.x = Math.sin(elapsed * 11) * radius;
-                        bones.l_wrist.rotation.y = -Math.cos(elapsed * 11) * radius;
-                        requestAnimationFrame(drawCircles);
+                    if (elapsed < 2.5) {
+                        const wave = Math.sin(elapsed * 10) * 0.15;
+                        const cosWave = Math.cos(elapsed * 10) * 0.1;
+                        bones.r_wrist.rotation.x = wave;
+                        bones.l_wrist.rotation.x = wave;
+                        bones.r_wrist.rotation.y = cosWave;
+                        bones.l_wrist.rotation.y = -cosWave;
+                        requestAnimationFrame(animateCircles);
                     } else { finalize_gesture(); }
                 };
-                drawCircles();
+                animateCircles();
             }, 1000);
         }
 
-        function finalize_gesture() { resetPose(); is_busy = false; }
+        function finalize_gesture() { resetPose(); is_busy = false; last_activity_time = Date.now(); }
 
-        // --- ΒΕΛΤΙΩΜΕΝΗ ΑΝΑΓΝΩΡΙΣΗ ΦΡΑΣΕΩΝ ---
+        // ΦΩΝΗΤΙΚΟΣ ΕΛΕΓΧΟΣ
         const micBtn = document.getElementById('mic-btn');
         const subtitle = document.getElementById('subtitle');
         let recognition = null;
@@ -222,25 +212,19 @@
             recognition = new webkitSpeechRecognition();
             recognition.lang = 'el-GR';
             recognition.continuous = true;
-            recognition.interimResults = true; 
+            recognition.interimResults = false;
 
             recognition.onresult = (event) => {
-                let text = "";
-                for (let i = event.resultIndex; i < event.results.length; ++i) {
-                    text += event.results[i][0].transcript;
-                }
-                text = text.toLowerCase();
+                const text = event.results[event.results.length - 1][0].transcript.toLowerCase();
                 subtitle.innerText = "Είπες: " + text;
-
-                if (!is_busy) {
-                    if (text.includes("ευχαριστώ") || text.includes("ευχαριστω")) gesture_efcharisto();
-                    else if (text.includes("καλημέρα") || text.includes("καλημερα")) gesture_kalimera();
-                    else if (text.includes("μεσημέρι") || text.includes("μεσημερι")) gesture_mesimeri();
-                    else if (text.includes("γεια") || text.includes("χαίρετε") || text.includes("γεια σου")) gesture_geia();
-                    // Εδώ πιάνει οποιαδήποτε φράση περιέχει τις λέξεις-κλειδιά
-                    else if (text.includes("όνομα") || text.includes("ονομα") || text.includes("λένε") || text.includes("λενε") || text.includes("ποιο είναι") || text.includes("ποιος εισαι")) gesture_onoma();
-                }
+                
+                if (text.includes("ευχαριστώ") || text.includes("ευχαριστω")) gesture_efcharisto();
+                else if (text.includes("καλημέρα") || text.includes("καλημερα")) gesture_kalimera();
+                else if (text.includes("μεσημέρι") || text.includes("μεσημερι")) gesture_mesimeri();
+                else if (text.includes("γεια") || text.includes("χαίρετε")) gesture_geia();
+                else if (text.includes("όνομα") || text.includes("λένε") || text.includes("εσύ")) gesture_onoma();
             };
+
             recognition.onend = () => { if(isListening) recognition.start(); };
         }
 
@@ -248,15 +232,15 @@
             if (!isListening) {
                 recognition.start();
                 isListening = true;
-                micBtn.innerText = "🛑 Κλείσιμο";
+                micBtn.innerText = "🛑 Κλείσιμο Μικροφώνου";
                 micBtn.classList.add('listening');
                 subtitle.innerText = "Ακούω...";
             } else {
                 isListening = false;
                 recognition.stop();
-                micBtn.innerText = "🎙️ Ενεργοποίηση";
+                micBtn.innerText = "🎙️ Άνοιγμα Μικροφώνου";
                 micBtn.classList.remove('listening');
-                subtitle.innerText = "Μικρόφωνο Κλειστό";
+                subtitle.innerText = "Μικρόφωνο Απενεργοποιημένο";
             }
         };
 
