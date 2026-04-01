@@ -241,7 +241,7 @@
                 else if (text.includes("γεια") || text.includes("χαίρετε")) { 
                     last_trigger_time = now; gesture_geia(); 
                 }
-                // Πιάνει και το σκέτο "όνομα" τώρα
+                // Εδώ διορθώθηκε: Αν υπάρχει η λέξη 'όνομα' σε οποιοδήποτε περιεχόμενο, το avatar θα νοηματίσει
                 else if (text.includes("όνομα") || text.includes("ονομα") || text.includes("λένε") || text.includes("ποιο") || text.includes("εσύ")) { 
                     last_trigger_time = now; gesture_onoma(); 
                 }
