@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Web Avatar - Testing Efcharisto</title>
+    <title>Web Avatar - Final Efcharisto Test</title>
     <style>
         body { margin: 0; overflow: hidden; background-color: #f0e6dc; font-family: 'Segoe UI', sans-serif; }
         #canvas-container { width: 100vw; height: 100vh; display: block; }
@@ -71,7 +71,7 @@
         let currentModel = null, bones = {}, is_busy = false, gesture_queue = [], last_activity_time = Date.now();
         const deg = (d) => d * (Math.PI / 180);
 
-        // --- ΚΛΕΙΔΩΜΕΝΗ ΒΑΣΗ (ΔΕΝ ΑΛΛΑΖΕΙ) ---
+        // --- ΚΛΕΙΔΩΜΕΝΗ ΒΑΣΗ ---
         const myPose = { x: 54, y: 30, z: 17 };
 
         function loadAvatar(file) {
@@ -79,7 +79,6 @@
             bones = {};
             new THREE.GLTFLoader().load(file, (gltf) => {
                 currentModel = gltf.scene;
-                // ΚΛΕΙΔΩΜΕΝΟ ΥΨΟΣ 0.6
                 currentModel.position.set(0, 0.6, 0); 
                 currentModel.scale.set(1.1, 1.1, 1.1); 
                 scene.add(currentModel);
@@ -118,35 +117,32 @@
             setTimeout(() => { resetPose(); is_busy = false; last_activity_time = Date.now(); }, 600);
         }
 
-        // --- 1. ΕΥΧΑΡΙΣΤΩ (ΝΕΑ ΚΙΝΗΣΗ: Στέρνο & Γροθιές) ---
+        // --- 1. ΕΥΧΑΡΙΣΤΩ (ΜΟΝΟ) ---
         function gesture_efcharisto() {
             is_busy = true;
             
-            // Φάση 1: Δεξί χέρι στο ΣΤΕΡΝΟ
-            // X: 10 (σηκώνει το χέρι μπροστά) | Y: -80 (φέρνει το χέρι μέσα προς το στήθος)
-            gsap.to(bones.r_shoulder.rotation, { x: deg(10), y: deg(-80), z: deg(0), duration: 0.5 });
-            // Z: -110 (διπλώνει έντονα τον αγκώνα για να ακουμπήσει το χέρι στο στέρνο)
-            if (bones.r_elbow) gsap.to(bones.r_elbow.rotation, { x: 0, y: 0, z: deg(-110), duration: 0.5 });
+            // Φάση 1: Δεξί χέρι στο ΣΤΕΡΝΟ (Διόρθωση: Ο αγκώνας διπλώνει με το X για να πάει ΠΑΝΩ)
+            gsap.to(bones.r_shoulder.rotation, { x: deg(20), y: deg(-40), z: deg(17), duration: 0.5 });
+            if (bones.r_elbow) gsap.to(bones.r_elbow.rotation, { x: deg(-110), y: 0, z: 0, duration: 0.5 });
             
             // Φάση 2: Και τα ΔΥΟ χέρια μπροστά
             setTimeout(() => {
                 // Δεξί χέρι μπροστά
-                gsap.to(bones.r_shoulder.rotation, { x: deg(20), y: deg(10), z: deg(10), duration: 0.5 });
-                if (bones.r_elbow) gsap.to(bones.r_elbow.rotation, { x: 0, y: 0, z: deg(-15), duration: 0.5 });
+                gsap.to(bones.r_shoulder.rotation, { x: deg(10), y: deg(10), z: deg(10), duration: 0.5 });
+                if (bones.r_elbow) gsap.to(bones.r_elbow.rotation, { x: deg(-15), y: 0, z: 0, duration: 0.5 });
                 
-                // Αριστερό χέρι μπροστά (Συμμετρικά, αντίθετα πρόσημα στους άξονες Y/Z)
-                gsap.to(bones.l_shoulder.rotation, { x: deg(20), y: deg(-10), z: deg(-10), duration: 0.5 });
-                if (bones.l_elbow) gsap.to(bones.l_elbow.rotation, { x: 0, y: 0, z: deg(15), duration: 0.5 });
+                // Αριστερό χέρι μπροστά (Συμμετρικά)
+                gsap.to(bones.l_shoulder.rotation, { x: deg(10), y: deg(-10), z: deg(-10), duration: 0.5 });
+                if (bones.l_elbow) gsap.to(bones.l_elbow.rotation, { x: deg(-15), y: 0, z: 0, duration: 0.5 });
                 
-                // Ξεκινάει το ανοιγοκλείσιμο γροθιών
+                // Ξεκινάει ο παλμός των γροθιών
                 setTimeout(() => pulse_efcharisto(4), 500);
             }, 700);
         }
         
         function pulse_efcharisto(count) {
             if (count <= 0) { finalize_gesture(); return; }
-            // Παλμική κίνηση των καρπών (πάνω-κάτω) για να προσομοιώσει τις γροθιές
-            let wrist_bend = count % 2 === 0 ? 40 : -10;
+            let wrist_bend = count % 2 === 0 ? 30 : -10;
             if (bones.r_wrist) gsap.to(bones.r_wrist.rotation, { x: deg(wrist_bend), duration: 0.2 });
             if (bones.l_wrist) gsap.to(bones.l_wrist.rotation, { x: deg(wrist_bend), duration: 0.2 });
             
