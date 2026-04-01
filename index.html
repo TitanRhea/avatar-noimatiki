@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Web Avatar - Debugging Efcharisto</title>
+    <title>Web Avatar - Perfecting Efcharisto</title>
     <style>
         body { margin: 0; overflow: hidden; background-color: #f0e6dc; font-family: 'Segoe UI', sans-serif; }
         #canvas-container { width: 100vw; height: 100vh; display: block; }
@@ -32,7 +32,7 @@
     <div id="canvas-container"></div>
     
     <div id="ui-layer">
-        <div id="subtitle">Debug Mode: Πες "Ευχαριστώ"</div><br>
+        <div id="subtitle">Πες "Ευχαριστώ" (Ρύθμιση Στέρνου)</div><br>
         <div class="controls">
             <select id="avatar-select" onchange="loadAvatar(this.value)">
                 <option value="rhea.glb">Avatar: Rhea (Γυναίκα)</option>
@@ -120,20 +120,44 @@
             last_activity_time = Date.now();
         }
 
-        // --- ΜΟΝΟ ΤΟ ΕΥΧΑΡΙΣΤΩ (ΔΡΑΣΤΙΚΗ ΑΛΛΑΓΗ ΣΤΟΝ ΑΓΚΩΝΑ) ---
+        // --- ΜΟΝΟ ΤΟ ΕΥΧΑΡΙΣΤΩ ---
         function gesture_efcharisto() {
             is_busy = true;
             
-            // Κίνηση πολύ αργή (1.5 δευτερόλεπτο) για να δούμε καθαρά τη διαδρομή του χεριού
-            gsap.to(bones.r_shoulder.rotation, { x: deg(0), y: deg(-50), z: deg(17), duration: 1.5 });
-            
-            // ΔΡΑΣΤΙΚΟ ΤΕΣΤ: Βάζουμε τον άξονα X του αγκώνα στο -150!
-            if (bones.r_elbow) gsap.to(bones.r_elbow.rotation, { x: deg(-150), y: 0, z: 0, duration: 1.5 });
-            
-            // Το κρατάμε εκεί για 3 δευτερόλεπτα ώστε να το παρατηρήσεις, και μετά επιστρέφει
+            // Φάση 1: Δεξί χέρι στο ΣΤΕΡΝΟ
+            // Ώμος πιο χαμηλά (X: 30), προς τα μέσα (Y: -50), Z στο 0 για να μην πετάει ο αγκώνας
+            gsap.to(bones.r_shoulder.rotation, { x: deg(30), y: deg(-50), z: deg(0), duration: 0.5 });
+            // Αγκώνας διπλώνει αρκετά, αλλά όχι υπερβολικά (X: -110)
+            if (bones.r_elbow) gsap.to(bones.r_elbow.rotation, { x: deg(-110), y: 0, z: 0, duration: 0.5 });
+            // Καρπός ελαφρώς λυγισμένος για να "ακουμπάει" στο στήθος (Y: -30)
+            if (bones.r_wrist) gsap.to(bones.r_wrist.rotation, { x: 0, y: deg(-30), z: 0, duration: 0.5 });
+
+            // Φάση 2: Δύο χέρια μπροστά
             setTimeout(() => {
-                finalize_gesture();
-            }, 3000);
+                // Δεξί χέρι ευθεία μπροστά (X: 0, Y: 10), Αγκώνας ελαφρώς λυγισμένος (X: -20)
+                gsap.to(bones.r_shoulder.rotation, { x: deg(0), y: deg(10), z: deg(0), duration: 0.5 });
+                if (bones.r_elbow) gsap.to(bones.r_elbow.rotation, { x: deg(-20), y: 0, z: 0, duration: 0.5 });
+                if (bones.r_wrist) gsap.to(bones.r_wrist.rotation, { x: 0, y: 0, z: 0, duration: 0.5 });
+                
+                // Αριστερό χέρι ευθεία μπροστά (συμμετρικά Y: -10)
+                gsap.to(bones.l_shoulder.rotation, { x: deg(0), y: deg(-10), z: deg(0), duration: 0.5 });
+                if (bones.l_elbow) gsap.to(bones.l_elbow.rotation, { x: deg(-20), y: 0, z: 0, duration: 0.5 });
+                if (bones.l_wrist) gsap.to(bones.l_wrist.rotation, { x: 0, y: 0, z: 0, duration: 0.5 });
+                
+                // Ξεκινάει ο παλμός
+                setTimeout(() => pulse_efcharisto(4), 500);
+            }, 800); // 800ms για να προλάβεις να δεις το χέρι στο στέρνο
+        }
+
+        // Φάση 3: Ο παλμός της γροθιάς
+        function pulse_efcharisto(count) {
+            if (count <= 0) { finalize_gesture(); return; }
+            // Οι καρποί κάνουν κίνηση πάνω κάτω
+            let wrist_bend = count % 2 === 0 ? 20 : -20;
+            if (bones.r_wrist) gsap.to(bones.r_wrist.rotation, { x: deg(wrist_bend), duration: 0.25 });
+            if (bones.l_wrist) gsap.to(bones.l_wrist.rotation, { x: deg(wrist_bend), duration: 0.25 });
+            
+            setTimeout(() => pulse_efcharisto(count - 1), 260);
         }
 
         // --- ΟΥΡΑ ΚΙΝΗΣΕΩΝ & ΦΩΝΗ (Καθαρισμένη) ---
@@ -141,7 +165,6 @@
             if (!is_busy && gesture_queue.length > 0) {
                 const w = gesture_queue.shift();
                 
-                // Εκτελεί μόνο αν ακούσει "ευχαριστώ"
                 if (w === "ευχαριστώ" || w === "ευχαριστω") {
                     gesture_efcharisto();
                 }
