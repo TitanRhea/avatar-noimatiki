@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Web Avatar - Final Fixed Logic</title>
+    <title>Web Avatar - Fixed Finger Curl</title>
     <style>
         body { margin: 0; overflow: hidden; background-color: #f0e6dc; font-family: 'Segoe UI', sans-serif; }
         #canvas-container { width: 100vw; height: 100vh; display: block; }
@@ -87,31 +87,32 @@
                         if (b.endsWith('leftforearm')) bones.l_elbow = n;
                         if (b.endsWith('righthand')) bones.r_wrist = n;
                         if (b.endsWith('lefthand')) bones.l_wrist = n;
-                        if (b.includes('hand') && !b.endsWith('hand')) {
-                            if (b.includes('right')) bones.r_fingers.push(n);
-                            if (b.includes('left')) bones.l_fingers.push(n);
-                        }
+                        if (b.includes('righthand') && !b.endsWith('righthand')) bones.r_fingers.push(n);
+                        if (b.includes('lefthand') && !b.endsWith('lefthand')) bones.l_fingers.push(n);
                     }
                 });
                 resetPose(0.1);
             });
         }
 
-        // --- naturalCurl: ΔΙΟΡΘΩΣΗ ΦΟΡΑΣ (Κάμψη προς την παλάμη) ---
+        // --- ΔΙΟΡΘΩΜΕΝΗ naturalCurl: ΣΤΗ ΜΕΣΗ & ΣΩΣΤΗ ΦΟΡΑ ---
         function naturalCurl(side, amount, skipIndex = false, duration = 0.5) {
             const list = side === 'r' ? bones.r_fingers : bones.l_fingers;
-            // Σωστή φορά γιαMixamo rigs: Θετικό Z για δεξί, Αρνητικό Z για αριστερό
-            const dir = side === 'r' ? 1 : -1; 
+            // ΑΛΛΑΓΗ ΦΟΡΑΣ: Ανέστρεψα το πρόσημο για κάμψη προς την παλάμη
+            const dir = side === 'r' ? -1 : 1; 
             
             list.forEach(f => {
                 const name = f.name.toLowerCase();
                 if (skipIndex && name.includes('index')) return;
                 
-                let mult = 0.4; 
-                if (name.includes('2')) mult = 0.5;
-                if (name.includes('3')) mult = 0.2;
+                // Επανέφερα multipliers για καμπύλη (όχι ευθεία)
+                let mult = 0.8; 
+                if (name.includes('2')) mult = 1.0; 
+                if (name.includes('3')) mult = 0.6; 
                 
-                gsap.to(f.rotation, { z: deg(amount * dir * mult), duration: duration });
+                gsap.to(f.rotation, { z: deg(amount * dir * mult), duration: duration, ease: "power2.out" });
+                // Πολύ μικρό X για σταθερότητα
+                gsap.to(f.rotation, { x: deg(2 * dir), duration: duration });
             });
         }
 
@@ -121,11 +122,10 @@
             gsap.to(bones.l_shoulder.rotation, { x: deg(basePose.x), y: deg(-basePose.y), z: deg(-basePose.z), duration: speed });
             [bones.r_elbow, bones.l_elbow, bones.r_wrist, bones.l_wrist].forEach(b => { if(b) gsap.to(b.rotation, { x: 0, y: 0, z: 0, duration: speed }); });
             bones.r_fingers.concat(bones.l_fingers).forEach(f => gsap.to(f.rotation, { x:0, y:0, z:0, duration: speed }));
-            // Απελευθέρωση Busy
-            setTimeout(() => { is_busy = false; }, speed * 1000 + 50);
+            is_busy = false;
         }
 
-        // --- ΚΙΝΗΣΕΙΣ (ΚΛΕΙΔΩΜΕΝΕΣ ΣΥΝΤΕΤΑΓΜΕΝΕΣ) ---
+        // --- ΚΙΝΗΣΕΙΣ ---
 
         function gesture_efcharisto() {
             is_busy = true;
@@ -136,10 +136,10 @@
                 gsap.to(bones.r_elbow.rotation, { x: deg(91), y: deg(-24), z: deg(-107), duration: 0.5 });
                 gsap.to(bones.l_shoulder.rotation, { x: deg(52), y: deg(27), z: deg(24), duration: 0.5 });
                 gsap.to(bones.l_elbow.rotation, { x: deg(91), y: deg(24), z: deg(107), duration: 0.5 });
-                const pulse = gsap.timeline({ repeat: 2, onComplete: resetPose });
-                pulse.to({}, { duration: 0.1, onStart: () => { naturalCurl('r', 50); naturalCurl('l', 50); } })
+                const pulse = gsap.timeline({ repeat: 2, onComplete: finalize_gesture });
+                pulse.to({}, { duration: 0.1, onStart: () => { naturalCurl('r', 70); naturalCurl('l', 70); } })
                      .to({}, { duration: 0.35 })
-                     .to({}, { duration: 0.1, onStart: () => { naturalCurl('r', 15); naturalCurl('l', 15); } })
+                     .to({}, { duration: 0.1, onStart: () => { naturalCurl('r', 25); naturalCurl('l', 25); } })
                      .to({}, { duration: 0.35 });
             }, 600);
         }
@@ -150,11 +150,12 @@
             gsap.to(bones.r_elbow.rotation, { x: deg(108), y: deg(-31), z: deg(-69), duration: 0.5 });
             setTimeout(() => {
                 gsap.to(bones.r_wrist.rotation, { y: deg(-65), duration: 0.3 });
-                naturalCurl('r', 60, true); 
+                naturalCurl('r', 85, true); 
                 const index = bones.r_fingers.filter(f => f.name.toLowerCase().includes('index'));
-                const flick = gsap.timeline({ repeat: 1, onComplete: resetPose });
-                flick.to(index.map(b=>b.rotation), { z: deg(45), duration: 0.15 }) 
-                     .to(index.map(b=>b.rotation), { z: deg(5), duration: 0.15 });
+                const flick = gsap.timeline({ repeat: 1, onComplete: finalize_gesture });
+                // Διόρθωση προσήμου και εδώ για τον δείκτη
+                flick.to(index.map(b=>b.rotation), { z: deg(-60), duration: 0.15, ease: "power1.inOut" })
+                     .to(index.map(b=>b.rotation), { z: deg(-10), duration: 0.15, ease: "power1.inOut" });
             }, 600);
         }
 
@@ -165,7 +166,7 @@
             setTimeout(() => {
                 gsap.to(bones.r_shoulder.rotation, { x: deg(52), y: deg(7), z: deg(-34), duration: 0.5 });
                 gsap.to(bones.r_elbow.rotation, { x: deg(21), y: deg(-44), z: deg(-121), duration: 0.5 });
-                const tl = gsap.timeline({ repeat: 2, onComplete: resetPose });
+                const tl = gsap.timeline({ repeat: 2, onComplete: finalize_gesture });
                 tl.to(bones.r_wrist.rotation, { y: deg(40), duration: 0.4 }).to(bones.r_wrist.rotation, { y: deg(-40), duration: 0.4 });
             }, 600);
         }
@@ -175,7 +176,7 @@
             gsap.to(bones.r_shoulder.rotation, { x: deg(11), y: deg(18), z: deg(4), duration: 0.5 });
             gsap.to(bones.r_elbow.rotation, { x: deg(-10), y: deg(35), z: deg(-128), duration: 0.5 });
             setTimeout(() => {
-                const tl = gsap.timeline({ repeat: 4, onComplete: resetPose });
+                const tl = gsap.timeline({ repeat: 4, onComplete: finalize_gesture });
                 tl.to(bones.r_wrist.rotation, { z: deg(25), duration: 0.25 }).to(bones.r_wrist.rotation, { z: deg(-25), duration: 0.25 });
             }, 600);
         }
@@ -184,13 +185,13 @@
             is_busy = true;
             gsap.to(bones.r_shoulder.rotation, { x: deg(39), y: deg(-24), z: deg(-58), duration: 0.5 });
             gsap.to(bones.r_elbow.rotation, { x: deg(25), y: deg(46), z: deg(-31), duration: 0.5 });
-            naturalCurl('r', 70, true);
+            naturalCurl('r', 90, true);
             setTimeout(() => {
                 gsap.to(bones.r_shoulder.rotation, { x: deg(25), y: deg(7), z: deg(-51), duration: 0.5 });
                 gsap.to(bones.r_elbow.rotation, { x: deg(59), y: deg(1), z: deg(-48), duration: 0.5 });
                 gsap.to(bones.l_shoulder.rotation, { x: deg(25), y: deg(-7), z: deg(51), duration: 0.5 });
                 gsap.to(bones.l_elbow.rotation, { x: deg(59), y: deg(1), z: deg(48), duration: 0.5 });
-                naturalCurl('l', 70, true);
+                naturalCurl('l', 90, true);
                 let start = Date.now();
                 const draw = () => {
                     let el = (Date.now() - start) / 1000;
@@ -201,13 +202,15 @@
                         bones.l_wrist.rotation.x = Math.sin(el * 11) * r;
                         bones.l_wrist.rotation.y = -Math.cos(el * 11) * r;
                         requestAnimationFrame(draw);
-                    } else { resetPose(); }
+                    } else { finalize_gesture(); }
                 };
                 draw();
             }, 1000);
         }
 
-        // --- ΦΩΝΗΤΙΚΟΣ ΕΛΕΓΧΟΣ (RELIABLE TRIGGER) ---
+        function finalize_gesture() { resetPose(); }
+
+        // --- ΦΩΝΗΤΙΚΟΣ ΕΛΕΓΧΟΣ (Απαράγκλιτος) ---
         const micBtn = document.getElementById('mic-btn');
         const subtitle = document.getElementById('subtitle');
         let recognition = null;
@@ -220,24 +223,30 @@
             recognition.interimResults = true; 
 
             recognition.onresult = (event) => {
-                // Παίρνουμε ΜΟΝΟ το τελευταίο αποτέλεσμα για να μη κολλάμε
-                let text = event.results[event.results.length - 1][0].transcript.toLowerCase().trim();
+                let text = "";
+                for (let i = event.resultIndex; i < event.results.length; ++i) {
+                    text += event.results[i][0].transcript;
+                }
+                text = text.toLowerCase();
                 subtitle.innerText = "Είπες: " + text;
 
                 const now = Date.now();
-                if (is_busy || (now - last_trigger_time < 1500)) return;
+                if (is_busy || (now - last_trigger_time < 2000)) return;
 
-                // TRIGGER LOGIC (Root word search)
-                if (text.includes("ονομ")) { 
-                    last_trigger_time = now; gesture_onoma(); 
-                } else if (text.includes("ευχαριστ")) { 
+                if (text.includes("ευχαριστώ") || text.includes("ευχαριστω")) { 
                     last_trigger_time = now; gesture_efcharisto(); 
-                } else if (text.includes("καλημερ")) { 
+                }
+                else if (text.includes("καλημέρα") || text.includes("καλημερα")) { 
                     last_trigger_time = now; gesture_kalimera(); 
-                } else if (text.includes("μεσημερ")) { 
+                }
+                else if (text.includes("μεσημέρι") || text.includes("μεσημερι")) { 
                     last_trigger_time = now; gesture_mesimeri(); 
-                } else if (text.includes("γεια") || text.includes("χαιρετ")) { 
+                }
+                else if (text.includes("γεια") || text.includes("χαίρετε")) { 
                     last_trigger_time = now; gesture_geia(); 
+                }
+                else if (text.includes("όνομα") || text.includes("λένε") || text.includes("ποιο") || text.includes("εσύ")) { 
+                    last_trigger_time = now; gesture_onoma(); 
                 }
             };
             recognition.onend = () => { if(isListening) recognition.start(); };
@@ -245,7 +254,7 @@
 
         micBtn.onclick = () => {
             if (!isListening) {
-                try { recognition.start(); } catch(e){}
+                recognition.start();
                 isListening = true;
                 micBtn.innerText = "🛑 Κλείσιμο";
                 micBtn.classList.add('listening');
