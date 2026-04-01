@@ -71,7 +71,7 @@
         let currentModel = null, bones = {}, is_busy = false, gesture_queue = [], last_activity_time = Date.now();
         const deg = (d) => d * (Math.PI / 180);
 
-        // ΟΙ ΔΙΚΟΙ ΣΟΥ ΑΡΙΘΜΟΙ: X=54, Y=30, Z=17 (ΑΥΣΤΗΡΑ ΚΛΕΙΔΩΜΕΝΟΙ)
+        // ΟΙ ΔΙΚΟΙ ΣΟΥ ΑΡΙΘΜΟΙ: ΚΛΕΙΔΩΜΕΝΟΙ
         const myPose = { x: 54, y: 30, z: 17 };
 
         function loadAvatar(file) {
@@ -79,7 +79,7 @@
             bones = {};
             new THREE.GLTFLoader().load(file, (gltf) => {
                 currentModel = gltf.scene;
-                // ΤΟΠΟΘΕΤΗΣΗ: Ρυθμίστηκε στο 0.6
+                // ΤΟΠΟΘΕΤΗΣΗ: Κλειδωμένο στο 0.6
                 currentModel.position.set(0, 0.6, 0); 
                 currentModel.scale.set(1.1, 1.1, 1.1); 
                 scene.add(currentModel);
@@ -98,11 +98,9 @@
 
         function resetPose(speed = 0.5) {
             if (!bones.r_shoulder) return;
-            // Χρήση σειράς XYZ που αντιστοιχεί στα νούμερά σου
             bones.r_shoulder.rotation.order = 'XYZ';
             bones.l_shoulder.rotation.order = 'XYZ';
             
-            // Εφαρμογή των αριθμών σου (Τα χέρια στη θέση που ήθελες)
             gsap.to(bones.r_shoulder.rotation, { x: deg(myPose.x), y: deg(myPose.y), z: deg(myPose.z), duration: speed });
             gsap.to(bones.l_shoulder.rotation, { x: deg(myPose.x), y: deg(-myPose.y), z: deg(-myPose.z), duration: speed });
         }
@@ -112,25 +110,60 @@
             gsap.to(bones.r_shoulder.rotation, { x: deg(10), y: deg(50), z: deg(0), duration: 0.4 });
             setTimeout(() => { resetPose(); is_busy = false; last_activity_time = Date.now(); }, 1200);
         }
+        
+        function gesture_kalimera() {
+            is_busy = true;
+            gsap.to(bones.r_shoulder.rotation, { x: deg(20), y: deg(10), z: deg(30), duration: 0.5 });
+            setTimeout(() => { resetPose(); is_busy = false; last_activity_time = Date.now(); }, 1200);
+        }
 
         setInterval(() => {
             if (!is_busy && gesture_queue.length > 0) {
                 const w = gesture_queue.shift();
-                if (w.includes("γεια")) gesture_geia();
+                // Προσθήκη ελέγχου και για τις λέξεις με τόνο
+                if (w.includes("γεια") || w.includes("γειά")) gesture_geia();
+                else if (w.includes("καλημέρα") || w.includes("καλημερα")) gesture_kalimera();
             }
             if (!is_busy && Date.now() - last_activity_time > 4000) resetPose(1.0);
         }, 100);
 
+        // --- ΔΙΟΡΘΩΣΗ ΜΙΚΡΟΦΩΝΟΥ ---
         const micBtn = document.getElementById('mic-btn');
         let rec = new (window.webkitSpeechRecognition || window.SpeechRecognition)();
-        rec.lang = 'el-GR'; rec.continuous = true;
+        rec.lang = 'el-GR'; 
+        rec.continuous = true;
+        let is_listening = false;
+        
+        rec.onstart = () => {
+            is_listening = true;
+            micBtn.classList.add('listening');
+            micBtn.innerText = "🛑 Ακούω... (Πάτα για κλείσιμο)";
+        };
+
+        rec.onend = () => {
+            is_listening = false;
+            micBtn.classList.remove('listening');
+            micBtn.innerText = "🎙️ Ενεργοποίηση Μικροφώνου";
+        };
+
         rec.onresult = (e) => {
             const t = e.results[e.results.length-1][0].transcript.toLowerCase();
-            document.getElementById('subtitle').innerText = t;
-            t.split(" ").forEach(word => gesture_queue.push(word));
+            document.getElementById('subtitle').innerText = "Είπες: " + t;
+            
+            // Αφαίρεση σημείων στίξης για να μην μπερδεύεται ο κώδικας (π.χ. "γεια!")
+            const clean_text = t.replace(/[.,!?]/g, '');
+            clean_text.split(" ").forEach(word => gesture_queue.push(word));
+            
             last_activity_time = Date.now();
         };
-        micBtn.onclick = () => { rec.start(); micBtn.classList.add('listening'); };
+
+        micBtn.onclick = () => { 
+            if (is_listening) {
+                rec.stop(); // Αν ακούει, το κλείνει
+            } else {
+                rec.start(); // Αν δεν ακούει, το ανοίγει
+            }
+        };
 
         loadAvatar('rhea.glb');
         function animate() { requestAnimationFrame(animate); renderer.render(scene, camera); }
