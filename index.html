@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Web Avatar - Perfecting Efcharisto</title>
+    <title>Web Avatar - Testing Efcharisto</title>
     <style>
         body { margin: 0; overflow: hidden; background-color: #f0e6dc; font-family: 'Segoe UI', sans-serif; }
         #canvas-container { width: 100vw; height: 100vh; display: block; }
@@ -32,7 +32,7 @@
     <div id="canvas-container"></div>
     
     <div id="ui-layer">
-        <div id="subtitle">Πες "Ευχαριστώ" (Ρύθμιση Στέρνου)</div><br>
+        <div id="subtitle">Έτοιμο! Δοκίμασε το "Ευχαριστώ"</div><br>
         <div class="controls">
             <select id="avatar-select" onchange="loadAvatar(this.value)">
                 <option value="rhea.glb">Avatar: Rhea (Γυναίκα)</option>
@@ -115,50 +115,110 @@
         }
 
         function finalize_gesture() {
-            resetPose(); 
-            is_busy = false; 
-            last_activity_time = Date.now();
+            setTimeout(() => { resetPose(); is_busy = false; last_activity_time = Date.now(); }, 600);
         }
 
-      // Φάση 1: Δεξί χέρι στο ΣΤΕΡΝΟ
+        // --- 1. ΕΥΧΑΡΙΣΤΩ (ΝΕΑ ΚΙΝΗΣΗ: Στέρνο & Γροθιές) ---
+        function gesture_efcharisto() {
+            is_busy = true;
+            
+            // Φάση 1: Δεξί χέρι στο ΣΤΕΡΝΟ
             // X: 0 (σηκώνει το χέρι μπροστά) | Y: -40 (φέρνει το χέρι μέσα προς το στήθος)
             gsap.to(bones.r_shoulder.rotation, { x: deg(0), y: deg(-40), z: deg(0), duration: 0.5 });
             // Z: -110 (διπλώνει έντονα τον αγκώνα για να ακουμπήσει το χέρι στο στέρνο)
             if (bones.r_elbow) gsap.to(bones.r_elbow.rotation, { x: 0, y: 0, z: deg(-110), duration: 0.5 });
-
-            // Φάση 2: Δύο χέρια μπροστά
+            
+            // Φάση 2: Και τα ΔΥΟ χέρια μπροστά
             setTimeout(() => {
-                // Δεξί χέρι
-                gsap.to(bones.r_shoulder.rotation, { x: deg(0), y: deg(10), z: deg(17), duration: 0.5 });
-                if (bones.r_elbow) gsap.to(bones.r_elbow.rotation, { x: deg(-20), y: 0, z: 0, duration: 0.5 });
+                // Δεξί χέρι μπροστά
+                gsap.to(bones.r_shoulder.rotation, { x: deg(20), y: deg(10), z: deg(10), duration: 0.5 });
+                if (bones.r_elbow) gsap.to(bones.r_elbow.rotation, { x: 0, y: 0, z: deg(-15), duration: 0.5 });
                 
-                // Αριστερό χέρι
-                gsap.to(bones.l_shoulder.rotation, { x: deg(0), y: deg(-10), z: deg(-17), duration: 0.5 });
-                if (bones.l_elbow) gsap.to(bones.l_elbow.rotation, { x: deg(-20), y: 0, z: 0, duration: 0.5 });
+                // Αριστερό χέρι μπροστά (Συμμετρικά, αντίθετα πρόσημα στους άξονες Y/Z)
+                gsap.to(bones.l_shoulder.rotation, { x: deg(20), y: deg(-10), z: deg(-10), duration: 0.5 });
+                if (bones.l_elbow) gsap.to(bones.l_elbow.rotation, { x: 0, y: 0, z: deg(15), duration: 0.5 });
                 
-                // Ξεκινάει ο παλμός
+                // Ξεκινάει το ανοιγοκλείσιμο γροθιών
                 setTimeout(() => pulse_efcharisto(4), 500);
-            }, 800); 
+            }, 700);
         }
-
-        // Φάση 3: Ο παλμός της γροθιάς
+        
         function pulse_efcharisto(count) {
             if (count <= 0) { finalize_gesture(); return; }
-            let wrist_bend = count % 2 === 0 ? 30 : -10;
-            if (bones.r_wrist) gsap.to(bones.r_wrist.rotation, { x: deg(wrist_bend), duration: 0.25 });
-            if (bones.l_wrist) gsap.to(bones.l_wrist.rotation, { x: deg(wrist_bend), duration: 0.25 });
+            // Παλμική κίνηση των καρπών (πάνω-κάτω) για να προσομοιώσει τις γροθιές
+            let wrist_bend = count % 2 === 0 ? 40 : -10;
+            if (bones.r_wrist) gsap.to(bones.r_wrist.rotation, { x: deg(wrist_bend), duration: 0.2 });
+            if (bones.l_wrist) gsap.to(bones.l_wrist.rotation, { x: deg(wrist_bend), duration: 0.2 });
             
-            setTimeout(() => pulse_efcharisto(count - 1), 260);
+            setTimeout(() => pulse_efcharisto(count - 1), 220);
         }
 
-        // --- ΟΥΡΑ ΚΙΝΗΣΕΩΝ & ΦΩΝΗ (Καθαρισμένη) ---
+        // --- 2. ΚΑΛΗΜΕΡΑ ---
+        function gesture_kalimera() {
+            is_busy = true;
+            gsap.to(bones.r_shoulder.rotation, { x: deg(10), y: deg(10), z: deg(17), duration: 0.4 });
+            if (bones.r_elbow) gsap.to(bones.r_elbow.rotation, { x: deg(-100), z: deg(-20), duration: 0.4 });
+            setTimeout(() => {
+                gsap.to(bones.r_shoulder.rotation, { x: deg(10), y: deg(50), z: deg(17), duration: 0.5 });
+                if (bones.r_elbow) gsap.to(bones.r_elbow.rotation, { x: deg(-20), z: 0, duration: 0.5 });
+                finalize_gesture();
+            }, 600);
+        }
+
+        // --- 3. ΓΕΙΑ ---
+        function gesture_geia() {
+            is_busy = true;
+            gsap.to(bones.r_shoulder.rotation, { x: deg(-10), y: deg(50), z: deg(17), duration: 0.4 });
+            if (bones.r_elbow) gsap.to(bones.r_elbow.rotation, { x: deg(-40), duration: 0.4 });
+            setTimeout(() => wave_action(4), 450);
+        }
+        function wave_action(count) {
+            if (count <= 0) { finalize_gesture(); return; }
+            let z_angle = count % 2 === 0 ? 30 : -30;
+            if (bones.r_wrist) gsap.to(bones.r_wrist.rotation, { x: 0, y: 0, z: deg(z_angle), duration: 0.2 });
+            setTimeout(() => wave_action(count - 1), 220);
+        }
+
+        // --- 4. ΚΑΛΟ ΜΕΣΗΜΕΡΙ ---
+        function gesture_kalo_mesimeri() {
+            is_busy = true;
+            gsap.to(bones.r_shoulder.rotation, { x: deg(10), y: deg(10), z: deg(17), duration: 0.4 });
+            if (bones.r_elbow) gsap.to(bones.r_elbow.rotation, { x: deg(-100), z: deg(-20), duration: 0.4 });
+            setTimeout(() => pulse_mesimeri(4), 500);
+        }
+        function pulse_mesimeri(count) {
+            if (count <= 0) { finalize_gesture(); return; }
+            let elbow_bend = count % 2 === 0 ? -60 : -100; 
+            if (bones.r_elbow) gsap.to(bones.r_elbow.rotation, { x: deg(elbow_bend), duration: 0.2 });
+            setTimeout(() => pulse_mesimeri(count - 1), 220);
+        }
+
+        // --- 5. ΟΝΟΜΑ ---
+        function gesture_onoma() {
+            is_busy = true;
+            gsap.to(bones.r_shoulder.rotation, { x: deg(20), y: deg(10), z: deg(17), duration: 0.4 });
+            gsap.to(bones.l_shoulder.rotation, { x: deg(20), y: deg(-10), z: deg(-17), duration: 0.4 });
+            if (bones.r_elbow) gsap.to(bones.r_elbow.rotation, { x: deg(-80), z: deg(-20), duration: 0.4 });
+            if (bones.l_elbow) gsap.to(bones.l_elbow.rotation, { x: deg(-80), z: deg(20), duration: 0.4 });
+            setTimeout(() => circle_onoma(8), 500); 
+        }
+        function circle_onoma(step) {
+            if (step <= 0) { finalize_gesture(); return; }
+            let x_move = step % 2 === 0 ? 10 : 30;
+            gsap.to(bones.r_shoulder.rotation, { x: deg(x_move), duration: 0.25 });
+            gsap.to(bones.l_shoulder.rotation, { x: deg(x_move), duration: 0.25 });
+            setTimeout(() => circle_onoma(step - 1), 260);
+        }
+
+        // Ουρά κινήσεων
         setInterval(() => {
             if (!is_busy && gesture_queue.length > 0) {
                 const w = gesture_queue.shift();
-                
-                if (w === "ευχαριστώ" || w === "ευχαριστω") {
-                    gesture_efcharisto();
-                }
+                if (w === "γεια" || w === "γειά") gesture_geia();
+                else if (w === "καλημέρα" || w === "καλημερα") gesture_kalimera();
+                else if (w === "ευχαριστώ" || w === "ευχαριστω") gesture_efcharisto();
+                else if (w === "καλό_μεσημέρι" || w === "μεσημέρι" || w === "μεσημερι") gesture_kalo_mesimeri();
+                else if (w === "όνομα" || w === "ονομα" || w === "νοηματικό_όνομα") gesture_onoma();
             }
             if (!is_busy && Date.now() - last_activity_time > 4000) resetPose(1.0);
         }, 100);
@@ -188,6 +248,11 @@
             document.getElementById('subtitle').innerText = "Είπες: " + t;
             
             t = t.replace(/[.,!?]/g, '');
+            t = t.replace("καλό μεσημέρι", "καλό_μεσημέρι").replace("καλο μεσημερι", "καλό_μεσημέρι");
+            t = t.replace("νοηματικό όνομα", "νοηματικό_όνομα").replace("νοηματικο ονομα", "νοηματικό_όνομα");
+            t = t.replace("το νοηματικό σου", "νοηματικό_όνομα").replace("το νοηματικο σου", "νοηματικό_όνομα");
+            t = t.replace("το όνομά σου", "όνομα").replace("το ονομα σου", "όνομα");
+            
             t.split(" ").forEach(word => gesture_queue.push(word));
             last_activity_time = Date.now();
         };
