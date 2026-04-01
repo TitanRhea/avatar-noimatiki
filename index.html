@@ -123,8 +123,8 @@
             is_busy = true;
             
             // Φάση 1: Δεξί χέρι στο ΣΤΕΡΝΟ
-            // X: 0 (σηκώνει το χέρι μπροστά) | Y: -120 (φέρνει το χέρι μέσα προς το στήθος)
-            gsap.to(bones.r_shoulder.rotation, { x: deg(0), y: deg(-120), z: deg(0), duration: 0.5 });
+            // X: 0 (σηκώνει το χέρι μπροστά) | Y: 120 (φέρνει το χέρι μέσα προς το στήθος)
+            gsap.to(bones.r_shoulder.rotation, { x: deg(0), y: deg(120), z: deg(0), duration: 0.5 });
             // Z: -110 (διπλώνει έντονα τον αγκώνα για να ακουμπήσει το χέρι στο στέρνο)
             if (bones.r_elbow) gsap.to(bones.r_elbow.rotation, { x: 0, y: 0, z: deg(-110), duration: 0.5 });
             
