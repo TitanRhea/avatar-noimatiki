@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Web Avatar - Final Finger & Trigger Fix</title>
+    <title>Web Avatar - Final Fixed Version</title>
     <style>
         body { margin: 0; overflow: hidden; background-color: #f0e6dc; font-family: 'Segoe UI', sans-serif; }
         #canvas-container { width: 100vw; height: 100vh; display: block; }
@@ -87,32 +87,31 @@
                         if (b.endsWith('leftforearm')) bones.l_elbow = n;
                         if (b.endsWith('righthand')) bones.r_wrist = n;
                         if (b.endsWith('lefthand')) bones.l_wrist = n;
-                        if (b.includes('righthand') && !b.endsWith('righthand')) bones.r_fingers.push(n);
-                        if (b.includes('lefthand') && !b.endsWith('lefthand')) bones.l_fingers.push(n);
+                        if (b.includes('hand') && !b.endsWith('hand')) {
+                            if (b.includes('right')) bones.r_fingers.push(n);
+                            if (b.includes('left')) bones.l_fingers.push(n);
+                        }
                     }
                 });
                 resetPose(0.1);
             });
         }
 
-        // --- ΔΙΟΡΘΩΜΕΝΗ naturalCurl: ΣΤΗ ΜΕΣΗ & ΣΩΣΤΗ ΦΟΡΑ ---
+        // --- ΔΙΟΡΘΩΜΕΝΗ naturalCurl: ΑΝΤΙΣΤΡΟΦΗ ΦΟΡΑΣ ---
         function naturalCurl(side, amount, skipIndex = false, duration = 0.5) {
             const list = side === 'r' ? bones.r_fingers : bones.l_fingers;
-            // Αντιστροφή φοράς για να κλείνουν προς την παλάμη
-            const dir = side === 'r' ? 1 : -1; 
+            // Αλλαγή φοράς εδώ (αν ήταν θετικό, το κάναμε αρνητικό)
+            const dir = side === 'r' ? -1 : 1; 
             
             list.forEach(f => {
                 const name = f.name.toLowerCase();
                 if (skipIndex && name.includes('index')) return;
                 
-                // Πολύ πιο ήπια multipliers για να μένουν "στη μέση"
-                let mult = 0.5; 
-                if (name.includes('2')) mult = 0.6;
-                if (name.includes('3')) mult = 0.3;
+                let mult = 0.6; 
+                if (name.includes('2')) mult = 0.7;
+                if (name.includes('3')) mult = 0.4;
                 
                 gsap.to(f.rotation, { z: deg(amount * dir * mult), duration: duration, ease: "power2.out" });
-                // Μειωμένη κλίση X για να αποφύγουμε την παραμόρφωση
-                gsap.to(f.rotation, { x: 0, duration: duration });
             });
         }
 
@@ -122,10 +121,10 @@
             gsap.to(bones.l_shoulder.rotation, { x: deg(basePose.x), y: deg(-basePose.y), z: deg(-basePose.z), duration: speed });
             [bones.r_elbow, bones.l_elbow, bones.r_wrist, bones.l_wrist].forEach(b => { if(b) gsap.to(b.rotation, { x: 0, y: 0, z: 0, duration: speed }); });
             bones.r_fingers.concat(bones.l_fingers).forEach(f => gsap.to(f.rotation, { x:0, y:0, z:0, duration: speed }));
-            setTimeout(() => { is_busy = false; }, speed * 1000);
+            setTimeout(() => { is_busy = false; }, speed * 1000 + 100);
         }
 
-        // --- ΚΙΝΗΣΕΙΣ (LOCKED) ---
+        // --- ΚΙΝΗΣΕΙΣ (ΚΛΕΙΔΩΜΕΝΕΣ) ---
 
         function gesture_efcharisto() {
             is_busy = true;
@@ -136,7 +135,6 @@
                 gsap.to(bones.r_elbow.rotation, { x: deg(91), y: deg(-24), z: deg(-107), duration: 0.5 });
                 gsap.to(bones.l_shoulder.rotation, { x: deg(52), y: deg(27), z: deg(24), duration: 0.5 });
                 gsap.to(bones.l_elbow.rotation, { x: deg(91), y: deg(24), z: deg(107), duration: 0.5 });
-                
                 const pulse = gsap.timeline({ repeat: 2, onComplete: resetPose });
                 pulse.to({}, { duration: 0.1, onStart: () => { naturalCurl('r', 50); naturalCurl('l', 50); } })
                      .to({}, { duration: 0.35 })
@@ -154,9 +152,8 @@
                 naturalCurl('r', 60, true); 
                 const index = bones.r_fingers.filter(f => f.name.toLowerCase().includes('index'));
                 const flick = gsap.timeline({ repeat: 1, onComplete: resetPose });
-                // Διόρθωση φοράς και στον δείκτη
-                flick.to(index.map(b=>b.rotation), { z: deg(50), duration: 0.15 }) 
-                     .to(index.map(b=>b.rotation), { z: deg(5), duration: 0.15 });
+                flick.to(index.map(b=>b.rotation), { z: deg(-50), duration: 0.15 }) 
+                     .to(index.map(b=>b.rotation), { z: deg(-5), duration: 0.15 });
             }, 600);
         }
 
@@ -209,7 +206,7 @@
             }, 1000);
         }
 
-        // --- ΦΩΝΗΤΙΚΟΣ ΕΛΕΓΧΟΣ: ΠΑΝΙΣΧΥΡΟ TRIGGER ---
+        // --- ΦΩΝΗΤΙΚΟΣ ΕΛΕΓΧΟΣ (FIXED TRIGGERS) ---
         const micBtn = document.getElementById('mic-btn');
         const subtitle = document.getElementById('subtitle');
         let recognition = null;
@@ -230,22 +227,18 @@
                 subtitle.innerText = "Είπες: " + text;
 
                 const now = Date.now();
-                if (is_busy || (now - last_trigger_time < 2000)) return;
+                if (is_busy || (now - last_trigger_time < 1500)) return;
 
-                // Αναζήτηση ρίζας "ονομ" για να πιάνει τα πάντα
+                // TRIGGER LOGIC
                 if (text.includes("ονομ")) { 
                     last_trigger_time = now; gesture_onoma(); 
-                }
-                else if (text.includes("ευχαριστ")) { 
+                } else if (text.includes("ευχαριστ")) { 
                     last_trigger_time = now; gesture_efcharisto(); 
-                }
-                else if (text.includes("καλημερ")) { 
+                } else if (text.includes("καλημερ")) { 
                     last_trigger_time = now; gesture_kalimera(); 
-                }
-                else if (text.includes("μεσημερ")) { 
+                } else if (text.includes("μεσημερ")) { 
                     last_trigger_time = now; gesture_mesimeri(); 
-                }
-                else if (text.includes("γεια") || text.includes("χαιρετ")) { 
+                } else if (text.includes("γεια") || text.includes("χαιρετ")) { 
                     last_trigger_time = now; gesture_geia(); 
                 }
             };
@@ -254,7 +247,7 @@
 
         micBtn.onclick = () => {
             if (!isListening) {
-                recognition.start();
+                try { recognition.start(); } catch(e){}
                 isListening = true;
                 micBtn.innerText = "🛑 Κλείσιμο";
                 micBtn.classList.add('listening');
