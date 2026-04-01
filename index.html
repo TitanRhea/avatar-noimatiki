@@ -118,39 +118,46 @@
             setTimeout(() => { resetPose(); is_busy = false; last_activity_time = Date.now(); }, 600);
         }
 
-        // --- 1. ΕΥΧΑΡΙΣΤΩ (ΝΕΑ ΚΙΝΗΣΗ: Στέρνο & Γροθιές) ---
+        // --- 1. ΕΥΧΑΡΙΣΤΩ (Διορθωμένο Στέρνο & Παλμός) ---
         function gesture_efcharisto() {
             is_busy = true;
             
-            // Φάση 1: Δεξί χέρι στο ΣΤΕΡΝΟ
-            // X: 0 (σηκώνει το χέρι μπροστά) | Y: -40 (φέρνει το χέρι μέσα προς το στήθος)
-            gsap.to(bones.r_shoulder.rotation, { x: deg(0), y: deg(-40), z: deg(0), duration: 0.5 });
-            // Z: -110 (διπλώνει έντονα τον αγκώνα για να ακουμπήσει το χέρι στο στέρνο)
-            if (bones.r_elbow) gsap.to(bones.r_elbow.rotation, { x: 0, y: 0, z: deg(-110), duration: 0.5 });
+            // Φάση 1: Δεξί χέρι κέντρο στο ΣΤΕΡΝΟ
+            // X:-20 (σηκώνει το χέρι), Y:-70 (το φέρνει πολύ προς τα μέσα), Z:17 (σταθερό)
+            gsap.to(bones.r_shoulder.rotation, { x: deg(-20), y: deg(-70), z: deg(17), duration: 0.5 });
+            // Z:-120 (διπλώνει έντονα τον αγκώνα για να ακουμπήσει στο στέρνο)
+            if (bones.r_elbow) gsap.to(bones.r_elbow.rotation, { x: 0, y: 0, z: deg(-120), duration: 0.5 });
             
             // Φάση 2: Και τα ΔΥΟ χέρια μπροστά
             setTimeout(() => {
-                // Δεξί χέρι μπροστά
-                gsap.to(bones.r_shoulder.rotation, { x: deg(20), y: deg(10), z: deg(10), duration: 0.5 });
-                if (bones.r_elbow) gsap.to(bones.r_elbow.rotation, { x: 0, y: 0, z: deg(-15), duration: 0.5 });
+                // Δεξί χέρι μπροστά, ελαφρώς λυγισμένο
+                gsap.to(bones.r_shoulder.rotation, { x: deg(-10), y: deg(10), z: deg(10), duration: 0.5 });
+                if (bones.r_elbow) gsap.to(bones.r_elbow.rotation, { x: 0, y: 0, z: deg(-40), duration: 0.5 });
+                if (bones.r_wrist) gsap.to(bones.r_wrist.rotation, { x: deg(-20), y: 0, z: 0, duration: 0.5 });
                 
-                // Αριστερό χέρι μπροστά (Συμμετρικά, αντίθετα πρόσημα στους άξονες Y/Z)
-                gsap.to(bones.l_shoulder.rotation, { x: deg(20), y: deg(-10), z: deg(-10), duration: 0.5 });
-                if (bones.l_elbow) gsap.to(bones.l_elbow.rotation, { x: 0, y: 0, z: deg(15), duration: 0.5 });
+                // Αριστερό χέρι μπροστά (Συμμετρικά)
+                gsap.to(bones.l_shoulder.rotation, { x: deg(-10), y: deg(-10), z: deg(-10), duration: 0.5 });
+                if (bones.l_elbow) gsap.to(bones.l_elbow.rotation, { x: 0, y: 0, z: deg(40), duration: 0.5 });
+                if (bones.l_wrist) gsap.to(bones.l_wrist.rotation, { x: deg(-20), y: 0, z: 0, duration: 0.5 });
                 
-                // Ξεκινάει το ανοιγοκλείσιμο γροθιών
-                setTimeout(() => pulse_efcharisto(4), 500);
+                // Ξεκινάει ο διακριτικός παλμός (σαν να ανοίγουν γροθιές)
+                setTimeout(() => pulse_efcharisto(3), 500);
             }, 700);
         }
         
         function pulse_efcharisto(count) {
             if (count <= 0) { finalize_gesture(); return; }
-            // Παλμική κίνηση των καρπών (πάνω-κάτω) για να προσομοιώσει τις γροθιές
-            let wrist_bend = count % 2 === 0 ? 40 : -10;
-            if (bones.r_wrist) gsap.to(bones.r_wrist.rotation, { x: deg(wrist_bend), duration: 0.2 });
-            if (bones.l_wrist) gsap.to(bones.l_wrist.rotation, { x: deg(wrist_bend), duration: 0.2 });
             
-            setTimeout(() => pulse_efcharisto(count - 1), 220);
+            let wrist_bend = count % 2 === 0 ? 0 : -20;
+            let elbow_bend_r = count % 2 === 0 ? -30 : -40;
+            let elbow_bend_l = count % 2 === 0 ? 30 : 40;
+
+            if (bones.r_wrist) gsap.to(bones.r_wrist.rotation, { x: deg(wrist_bend), duration: 0.25 });
+            if (bones.l_wrist) gsap.to(bones.l_wrist.rotation, { x: deg(wrist_bend), duration: 0.25 });
+            if (bones.r_elbow) gsap.to(bones.r_elbow.rotation, { z: deg(elbow_bend_r), duration: 0.25 });
+            if (bones.l_elbow) gsap.to(bones.l_elbow.rotation, { z: deg(elbow_bend_l), duration: 0.25 });
+            
+            setTimeout(() => pulse_efcharisto(count - 1), 260);
         }
 
         // --- 2. ΚΑΛΗΜΕΡΑ ---
