@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Web Avatar - Greek Sign Language</title>
+    <title>Web Avatar - Final Pose & Position</title>
     <style>
         body { margin: 0; overflow: hidden; background-color: #f0e6dc; font-family: 'Segoe UI', sans-serif; }
         #canvas-container { width: 100vw; height: 100vh; display: block; }
@@ -22,8 +22,7 @@
             font-size: 16px; padding: 12px 25px; margin: 5px; border-radius: 10px; 
             cursor: pointer; border: 1px solid #ddd; background: white; transition: 0.3s;
         }
-        button:hover { background: #f9f9f9; transform: translateY(-2px); }
-        #mic-btn { background-color: #4CAF50; color: white; border: none; font-weight: bold; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
+        #mic-btn { background-color: #4CAF50; color: white; border: none; font-weight: bold; }
         #mic-btn.listening { background-color: #f44336; animation: pulse 1.5s infinite; }
         @keyframes pulse { 0% { transform: scale(1); } 50% { transform: scale(1.05); } 100% { transform: scale(1); } }
     </style>
@@ -52,9 +51,9 @@
         const scene = new THREE.Scene();
         scene.background = new THREE.Color(0xf0e6dc);
         
-        // ΚΑΜΕΡΑ: Ρυθμισμένη ψηλά και κεντραρισμένη στο πρόσωπο
+        // ΚΑΜΕΡΑ: Ρυθμισμένη για να βλέπει το αβατάρ κεντραρισμένο ψηλά
         const camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 100);
-        camera.position.set(0, 1.8, 3.5); 
+        camera.position.set(0, 1.2, 3.5); 
 
         const renderer = new THREE.WebGLRenderer({ antialias: true });
         renderer.setSize(window.innerWidth, window.innerHeight);
@@ -62,8 +61,7 @@
         document.getElementById('canvas-container').appendChild(renderer.domElement);
 
         const controls = new THREE.OrbitControls(camera, renderer.domElement);
-        // ΕΣΤΙΑΣΗ: Κοιτάμε το κεφάλι/στήθος (1.5 ύψος)
-        controls.target.set(0, 1.5, 0); 
+        controls.target.set(0, 1.2, 0); 
         controls.update();
 
         scene.add(new THREE.AmbientLight(0xffffff, 0.8));
@@ -74,16 +72,16 @@
         let currentModel = null, bones = {}, is_busy = false, gesture_queue = [], last_activity_time = Date.now();
         const deg = (d) => d * (Math.PI / 180);
 
-        // ΟΙ ΤΙΜΕΣ ΠΟΥ ΒΡΗΚΕΣ ΩΣ ΣΩΣΤΕΣ
-        const pose = { x: -36, y: -41, z: -108 };
+        // ΟΙ ΔΙΚΟΙ ΣΟΥ ΑΡΙΘΜΟΙ: X=54, Y=30, Z=17
+        const myPose = { x: 54, y: 30, z: 17 };
 
         function loadAvatar(file) {
             if (currentModel) scene.remove(currentModel);
             bones = {};
             new THREE.GLTFLoader().load(file, (gltf) => {
                 currentModel = gltf.scene;
-                // ΤΟΠΟΘΕΤΗΣΗ: Ανέβηκε σημαντικά για να φαίνεται ψηλά
-                currentModel.position.set(0, -0.8, 0); 
+                // ΤΟΠΟΘΕΤΗΣΗ: Ανέβηκε για να είναι κεντραρισμένο ψηλά στην οθόνη
+                currentModel.position.set(0, -1.2, 0); 
                 currentModel.scale.set(1.1, 1.1, 1.1); 
                 scene.add(currentModel);
 
@@ -93,8 +91,6 @@
                         const b = n.name.toLowerCase();
                         if (b.endsWith('rightarm')) bones.r_shoulder = n;
                         if (b.endsWith('leftarm')) bones.l_shoulder = n;
-                        if (b.endsWith('rightforearm')) bones.r_elbow = n;
-                        if (b.endsWith('leftforearm')) bones.l_elbow = n;
                     }
                 });
                 resetPose(0.1);
@@ -103,38 +99,25 @@
 
         function resetPose(speed = 0.5) {
             if (!bones.r_shoulder) return;
-            // Επιβολή σειράς YXZ (Ursina style) που δούλεψε στις δοκιμές σου
-            bones.r_shoulder.rotation.order = 'YXZ';
-            bones.l_shoulder.rotation.order = 'YXZ';
+            // Χρήση σειράς XYZ που αντιστοιχεί στα sliders που χρησιμοποίησες
+            bones.r_shoulder.rotation.order = 'XYZ';
+            bones.l_shoulder.rotation.order = 'XYZ';
             
-            // Εφαρμογή των ακριβών τιμών σου
-            gsap.to(bones.r_shoulder.rotation, { x: deg(pose.x), y: deg(pose.y), z: deg(pose.z), duration: speed });
-            gsap.to(bones.l_shoulder.rotation, { x: deg(pose.x), y: deg(-pose.y), z: deg(-pose.z), duration: speed });
-            
-            if (bones.r_elbow) gsap.to(bones.r_elbow.rotation, { x: 0, y: 0, z: 0, duration: speed });
-            if (bones.l_elbow) gsap.to(bones.l_elbow.rotation, { x: 0, y: 0, z: 0, duration: speed });
-        }
-
-        // --- ΚΙΝΗΣΕΙΣ ---
-        function gesture_kalimera() {
-            is_busy = true;
-            // Κίνηση βασισμένη στη νέα σου στάση
-            gsap.to(bones.r_shoulder.rotation, { x: deg(10), y: deg(20), z: deg(-30), duration: 0.5 });
-            setTimeout(() => { resetPose(); is_busy = false; last_activity_time = Date.now(); }, 1200);
+            // Εφαρμογή των αριθμών σου
+            gsap.to(bones.r_shoulder.rotation, { x: deg(myPose.x), y: deg(myPose.y), z: deg(myPose.z), duration: speed });
+            gsap.to(bones.l_shoulder.rotation, { x: deg(myPose.x), y: deg(-myPose.y), z: deg(-myPose.z), duration: speed });
         }
 
         function gesture_geia() {
             is_busy = true;
-            gsap.to(bones.r_shoulder.rotation, { x: deg(0), y: deg(40), z: deg(-50), duration: 0.4 });
-            setTimeout(() => { resetPose(); is_busy = false; last_activity_time = Date.now(); }, 1000);
+            gsap.to(bones.r_shoulder.rotation, { x: deg(10), y: deg(50), z: deg(0), duration: 0.4 });
+            setTimeout(() => { resetPose(); is_busy = false; last_activity_time = Date.now(); }, 1200);
         }
 
-        // --- ΜΗΧΑΝΙΣΜΟΣ ΦΩΝΗΣ ---
         setInterval(() => {
             if (!is_busy && gesture_queue.length > 0) {
                 const w = gesture_queue.shift();
-                if (w.includes("καλημέρα")) gesture_kalimera();
-                else if (w.includes("γεια")) gesture_geia();
+                if (w.includes("γεια")) gesture_geia();
             }
             if (!is_busy && Date.now() - last_activity_time > 4000) resetPose(1.0);
         }, 100);
@@ -142,29 +125,17 @@
         const micBtn = document.getElementById('mic-btn');
         let rec = new (window.webkitSpeechRecognition || window.SpeechRecognition)();
         rec.lang = 'el-GR'; rec.continuous = true;
-        
         rec.onresult = (e) => {
             const t = e.results[e.results.length-1][0].transcript.toLowerCase();
             document.getElementById('subtitle').innerText = t;
             t.split(" ").forEach(word => gesture_queue.push(word));
             last_activity_time = Date.now();
         };
-
-        micBtn.onclick = () => { 
-            rec.start(); 
-            micBtn.classList.add('listening');
-            micBtn.innerText = "🛑 Ακούω...";
-        };
+        micBtn.onclick = () => { rec.start(); micBtn.classList.add('listening'); };
 
         loadAvatar('rhea.glb');
         function animate() { requestAnimationFrame(animate); renderer.render(scene, camera); }
         animate();
-
-        window.addEventListener('resize', () => {
-            camera.aspect = window.innerWidth / window.innerHeight;
-            camera.updateProjectionMatrix();
-            renderer.setSize(window.innerWidth, window.innerHeight);
-        });
     </script>
 </body>
 </html>
