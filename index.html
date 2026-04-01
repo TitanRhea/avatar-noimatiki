@@ -90,6 +90,10 @@
                         const b = n.name.toLowerCase();
                         if (b.endsWith('rightarm')) bones.r_shoulder = n;
                         if (b.endsWith('leftarm')) bones.l_shoulder = n;
+                        if (b.endsWith('rightforearm')) bones.r_elbow = n;
+                        if (b.endsWith('leftforearm')) bones.l_elbow = n;
+                        if (b.endsWith('righthand')) bones.r_wrist = n;
+                        if (b.endsWith('lefthand')) bones.l_wrist = n;
                     }
                 });
                 resetPose(0.1);
@@ -103,6 +107,11 @@
             
             gsap.to(bones.r_shoulder.rotation, { x: deg(myPose.x), y: deg(myPose.y), z: deg(myPose.z), duration: speed });
             gsap.to(bones.l_shoulder.rotation, { x: deg(myPose.x), y: deg(-myPose.y), z: deg(-myPose.z), duration: speed });
+            
+            if (bones.r_elbow) gsap.to(bones.r_elbow.rotation, { x: 0, y: 0, z: 0, duration: speed });
+            if (bones.l_elbow) gsap.to(bones.l_elbow.rotation, { x: 0, y: 0, z: 0, duration: speed });
+            if (bones.r_wrist) gsap.to(bones.r_wrist.rotation, { x: 0, y: 0, z: 0, duration: speed });
+            if (bones.l_wrist) gsap.to(bones.l_wrist.rotation, { x: 0, y: 0, z: 0, duration: speed });
         }
 
         function gesture_geia() {
@@ -117,12 +126,32 @@
             setTimeout(() => { resetPose(); is_busy = false; last_activity_time = Date.now(); }, 1200);
         }
 
+        function gesture_efcharisto() {
+            is_busy = true;
+            
+            // Φάση 1: Το χέρι πάει προς το στόμα/πηγούνι (Σηκώνεται ο ώμος, λυγίζει ο αγκώνας)
+            gsap.to(bones.r_shoulder.rotation, { x: deg(10), y: deg(80), z: deg(20), duration: 0.45 });
+            if (bones.r_elbow) gsap.to(bones.r_elbow.rotation, { x: deg(0), y: deg(-110), z: deg(0), duration: 0.45 });
+            if (bones.r_wrist) gsap.to(bones.r_wrist.rotation, { x: deg(0), y: deg(30), z: deg(0), duration: 0.45 });
+
+            // Φάση 2: Το χέρι "πέφτει" προς τα εμπρός 
+            setTimeout(() => {
+                gsap.to(bones.r_shoulder.rotation, { x: deg(30), y: deg(40), z: deg(10), duration: 0.55 });
+                if (bones.r_elbow) gsap.to(bones.r_elbow.rotation, { x: deg(0), y: deg(-20), z: deg(0), duration: 0.55 });
+                if (bones.r_wrist) gsap.to(bones.r_wrist.rotation, { x: deg(0), y: deg(0), z: deg(0), duration: 0.55 });
+            }, 500);
+
+            // Επιστροφή στην αρχική κλειδωμένη στάση
+            setTimeout(() => { resetPose(); is_busy = false; last_activity_time = Date.now(); }, 1400);
+        }
+
         setInterval(() => {
             if (!is_busy && gesture_queue.length > 0) {
                 const w = gesture_queue.shift();
-                // Προσθήκη ελέγχου και για τις λέξεις με τόνο
+                
                 if (w.includes("γεια") || w.includes("γειά")) gesture_geia();
                 else if (w.includes("καλημέρα") || w.includes("καλημερα")) gesture_kalimera();
+                else if (w.includes("ευχαριστώ") || w.includes("ευχαριστω")) gesture_efcharisto();
             }
             if (!is_busy && Date.now() - last_activity_time > 4000) resetPose(1.0);
         }, 100);
@@ -150,7 +179,7 @@
             const t = e.results[e.results.length-1][0].transcript.toLowerCase();
             document.getElementById('subtitle').innerText = "Είπες: " + t;
             
-            // Αφαίρεση σημείων στίξης για να μην μπερδεύεται ο κώδικας (π.χ. "γεια!")
+            // Αφαίρεση σημείων στίξης για να μην μπερδεύεται ο κώδικας
             const clean_text = t.replace(/[.,!?]/g, '');
             clean_text.split(" ").forEach(word => gesture_queue.push(word));
             
@@ -159,9 +188,9 @@
 
         micBtn.onclick = () => { 
             if (is_listening) {
-                rec.stop(); // Αν ακούει, το κλείνει
+                rec.stop();
             } else {
-                rec.start(); // Αν δεν ακούει, το ανοίγει
+                rec.start();
             }
         };
 
