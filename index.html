@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Web Avatar - 2Final Fixed Fingers</title>
+    <title>Web Avatar - Final Fixed Fingers</title>
     <style>
         body { margin: 0; overflow: hidden; background-color: #f0e6dc; font-family: 'Segoe UI', sans-serif; }
         #canvas-container { width: 100vw; height: 100vh; display: block; }
@@ -97,7 +97,7 @@
             });
         }
 
-        // --- ΔΙΟΡΘΩΜΕΝΟ naturalCurl: ΠΛΗΡΕΣ ΚΛΕΙΣΙΜΟ (ΓΡΟΘΙΑ) ΧΩΡΙΣ ΝΕΑ TRIGGERS ---
+        // --- ΔΙΟΡΘΩΜΕΝΟ naturalCurl: ΠΛΗΡΕΣ ΚΛΕΙΣΙΜΟ (ΓΡΟΘΙΑ) ---
         function naturalCurl(side, amount, skipIndex = false, duration = 0.5) {
             const list = side === 'r' ? bones.r_fingers : bones.l_fingers;
             // Σωστή φορά για Mixamo (Θετικό Z για δεξί, Αρνητικό Z για αριστερό)
@@ -107,19 +107,15 @@
                 const name = f.name.toLowerCase();
                 if (skipIndex && name.includes('index')) return;
                 
-                // Αυξημένοι πολλαπλασιαστές για συμπαγή γροθιά
-                let mult = 1.0; // Βάση (MCP)
-                if (name.includes('2')) mult = 1.6; // Μέση (PIP)
-                if (name.includes('3')) mult = 1.3; // Άκρη (DIP)
-
-                // Ξεχωρίζουμε την περιστροφή του άξονα Χ (μηδενισμός) από τον Ζ (κάμψη)
-                // Με αυτόν τον τρόπο διασφαλίζουμε ότι το GSAP θα λυγίσει το δάχτυλο σωστά.
-                gsap.to(f.rotation, { 
-                    z: deg(amount * dir * mult), 
-                    x: 0, 
-                    duration: duration,
-                    ease: "power1.inOut" // Πιο φυσική κίνηση
-                });
+                // ΠΛΗΡΕΣ Multipliers για κάμψη εσωτερικά στην παλάμη
+                let mult = 0.8; // Βάση (MCP)
+                if (name.includes('2')) mult = 1.0; // Μέση (PIP) - Πλήρης κάμψη
+                if (name.includes('3')) mult = 0.6; // Άκρη (DIP) - Σχεδόν πλήρης κάμψη
+                
+                // Κύρια περιστροφή κάμψης στον άξονα Z
+                gsap.to(f.rotation, { z: deg(amount * dir * mult), duration: duration });
+                // ΔΙΟΡΘΩΣΗ: Μηδενισμός περιστροφής X για να κλείνουν σε ευθεία
+                gsap.to(f.rotation, { x: 0, duration: duration }); 
             });
         }
 
@@ -145,7 +141,7 @@
                 gsap.to(bones.l_shoulder.rotation, { x: deg(52), y: deg(27), z: deg(24), duration: 0.5 });
                 gsap.to(bones.l_elbow.rotation, { x: deg(91), y: deg(24), z: deg(107), duration: 0.5 });
                 const pulse = gsap.timeline({ repeat: 2, onComplete: finalize_gesture });
-                // Εδώ η naturalCurl θα κλείσει τα χέρια (γροθιά) και θα τα ανοίξει.
+                // Διόρθωση κάμψης δακτύλων
                 pulse.to({}, { duration: 0.1, onStart: () => { naturalCurl('r', 80); naturalCurl('l', 80); } })
                      .to({}, { duration: 0.35 })
                      .to({}, { duration: 0.1, onStart: () => { naturalCurl('r', 25); naturalCurl('l', 25); } })
@@ -194,7 +190,6 @@
             is_busy = true;
             gsap.to(bones.r_shoulder.rotation, { x: deg(39), y: deg(-24), z: deg(-58), duration: 0.5 });
             gsap.to(bones.r_elbow.rotation, { x: deg(25), y: deg(46), z: deg(-31), duration: 0.5 });
-            // Εδώ η naturalCurl κλείνει τη γροθιά κατά 90 μοίρες, αφήνοντας το δείκτη ελεύθερο (true)
             naturalCurl('r', 90, true);
             setTimeout(() => {
                 gsap.to(bones.r_shoulder.rotation, { x: deg(25), y: deg(7), z: deg(-51), duration: 0.5 });
@@ -243,7 +238,7 @@
                 const now = Date.now();
                 if (is_busy || (now - last_trigger_time < 1500)) return;
 
-                // TRIGGER LOGIC (Root word search - ΑΜΕΤΑΒΛΗΤΟ)
+                // TRIGGER LOGIC (Root word search)
                 if (text.includes("ονομ")) { 
                     last_trigger_time = now; gesture_onoma(); 
                 } else if (text.includes("ευχαριστ")) { 
