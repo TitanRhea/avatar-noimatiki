@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Web Avatar - 2Final Fixed GSL Flow</title>
+    <title>Web Avatar - 1Final Fixed GSL Flow</title>
     <style>
         body { margin: 0; overflow: hidden; background-color: #f0e6dc; font-family: 'Segoe UI', sans-serif; }
         #canvas-container { width: 100vw; height: 100vh; display: block; }
@@ -95,23 +95,29 @@
             });
         }
 
-        // --- ΔΙΟΡΘΩΜΕΝΗ naturalCurl: ΚΛΕΙΝΕΙ ΠΡΟΣ ΤΑ ΜΕΣΑ ---
-        function naturalCurl(side, amount, skipIndex = false, duration = 0.5) {
-            const list = side === 'r' ? bones.r_fingers : bones.l_fingers;
-            // Αντιστροφή προσήμου για κάμψη προς την παλάμη (Mixamo standard)
-            const dir = side === 'r' ? -0.5 : 0.5; 
-            
-            list.forEach(f => {
-                const name = f.name.toLowerCase();
-                if (skipIndex && name.includes('index')) return;
-                
-                let mult = 0.9; // Βάση
-                if (name.includes('2')) mult = 1.1; // Μέση
-                if (name.includes('3')) mult = 0.6; // Άκρη
-                
-                gsap.to(f.rotation, { z: deg(amount * dir * mult), duration: duration, ease: "power2.out" });
-            });
-        }
+        // --- ΔΙΟΡΘΩΜΕΝΟ naturalCurl: ΚΛΕΙΣΙΜΟ ΑΠΕΥΘΕΙΑΣ ΜΕΣΑ ΣΤΗΝ ΠΑΛΑΜΗ ---
+function naturalCurl(side, amount, skipIndex = false, duration = 0.5) {
+    const list = side === 'r' ? bones.r_fingers : bones.l_fingers;
+    // Διατήρηση της σωστής φοράς Mixamo (Θετικό Z για δεξί, Αρνητικό Z για αριστερό)
+    const dir = side === 'r' ? 1 : -1; 
+    
+    list.forEach(f => {
+        const name = f.name.toLowerCase();
+        if (skipIndex && name.includes('index')) return;
+        
+        // Multipliers για φυσική καμπύλη αρθρώσεων
+        let mult = 0.4; // Βάση (MCP)
+        if (name.includes('2')) mult = 0.5; // Μέση (PIP)
+        if (name.includes('3')) mult = 0.2; // Άκρη (DIP)
+        
+        // Κύρια περιστροφή κάμψης στον άξονα Z
+        gsap.to(f.rotation, { z: deg(amount * dir * mult), duration: duration });
+        
+        // ΔΙΟΡΘΩΣΗ: Μηδενισμός περιστροφής X για να κλείνουν σε ευθεία μέσα στην παλάμη
+        // Χωρίς πλευρική κλίση
+        gsap.to(f.rotation, { x: 0, duration: duration }); 
+    });
+}
 
         function resetPose(speed = 0.5) {
             if (!bones.r_shoulder) return;
