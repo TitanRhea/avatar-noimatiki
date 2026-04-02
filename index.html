@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Web Avatar - Final Sign Language Integrated with Queue</title>
+    <title>Web Avatar - 1Final Sign Language Integrated with Queue</title>
     <style>
         body { margin: 0; overflow: hidden; background-color: #f0e6dc; font-family: 'Segoe UI', sans-serif; }
         #canvas-container { width: 100vw; height: 100vh; display: block; }
@@ -69,21 +69,21 @@
         
         const basePose = { x: 54, y: 30, z: 17 };
 
-        // === ΣΥΣΤΗΜΑ ΟΥΡΑΣ ΓΙΑ ΣΥΝΕΧΗ ΡΟΗ ===
+        // === ΣΥΣΤΗΜΑ ΟΥΡΑΣ ΓΙΑ ΣΥΝΕΧΗ ΡΟΗ (Διορθωμένο για διπλές αναγνώσεις) ===
         let gestureQueue = [];
-        let lastQueuedWord = "";
+        let lastQueuedGesture = "";
         let lastQueuedTime = 0;
 
-        function enqueueGesture(name) {
+        function enqueueGesture(gestureName) {
             const now = Date.now();
-            // Αποτροπή διπλής καταγραφής της ΙΔΙΑΣ λέξης αν το μικρόφωνο την πιάσει 2 φορές σε 2 δευτερόλεπτα
-            if (name === lastQueuedWord && (now - lastQueuedTime < 2000)) return; 
+            // Αν είναι η ΙΔΙΑ κίνηση και έχουν περάσει λιγότερα από 3.5 δευτερόλεπτα, αγνόησέ την (αποφυγή διπλοεγγραφής)
+            if (gestureName === lastQueuedGesture && (now - lastQueuedTime < 3500)) return; 
             
-            lastQueuedWord = name;
+            lastQueuedGesture = gestureName;
             lastQueuedTime = now;
-            gestureQueue.push(name);
+            gestureQueue.push(gestureName);
             
-            // Αν το avatar κάθεται, ξεκίνα αμέσως
+            // Αν το avatar κάθεται ελεύθερο, ξεκίνα αμέσως
             if (!is_busy) {
                 processQueue();
             }
@@ -144,10 +144,9 @@
             bones.r_fingers.concat(bones.l_fingers).forEach(f => gsap.to(f.rotation, { x:0, y:0, z:0, duration: speed }));
         }
 
-        // Η συνάρτηση ολοκλήρωσης που ελέγχει την ουρά
         function finalize_gesture() { 
             resetPose(); 
-            // Περιμένουμε να τελειώσει η resetPose (0.5s) πριν ξεκινήσουμε την επόμενη
+            // Περιμένουμε να τελειώσει η resetPose (0.5s) πριν ξεκινήσουμε την επόμενη κίνηση απ' την ουρά
             setTimeout(() => { 
                 is_busy = false; 
                 processQueue(); 
@@ -202,40 +201,39 @@
                 
                 const pulse = gsap.timeline({ repeat: 2, onComplete: finalize_gesture });
                 pulse.to({}, { duration: 0.1, onStart: () => { customFist(0.1); } })
-                     .to({}, { duration: 0.15 }) // ΠΙΟ ΓΡΗΓΟΡΟ ΚΡΑΤΗΜΑ (ΔΙΟΡΘΩΣΗ #1)
+                     .to({}, { duration: 0.15 }) 
                      .to({}, { duration: 0.1, onStart: () => { 
                          bones.r_fingers.concat(bones.l_fingers).forEach(f => gsap.to(f.rotation, { x:0, y:0, z:0, duration: 0.1 }));
                      } })
-                     .to({}, { duration: 0.15 }); // ΠΙΟ ΓΡΗΓΟΡΟ ΚΡΑΤΗΜΑ
+                     .to({}, { duration: 0.15 }); 
             }, 600);
         }
 
         function gesture_kalimera() {
             is_busy = true;
+            // ΦΑΣΗ 1: Ακριβώς όπως η πρώτη κίνηση του μεσημέρι (ώμος, αγκώνας, μηδέν καρπός)
             gsap.to(bones.r_shoulder.rotation, { x: deg(70), y: deg(14), z: deg(-17), duration: 0.5 });
             gsap.to(bones.r_elbow.rotation, { x: deg(108), y: deg(-31), z: deg(-69), duration: 0.5 });
-            
-            // ΚΑΘΡΕΦΤΗΣ ΣΤΟ ΧΕΡΙ: Γυρίζουμε τον καρπό να κοιτάει μπροστά (ΔΙΟΡΘΩΣΗ #2)
-            gsap.to(bones.r_wrist.rotation, { x: 0, y: deg(-90), z: deg(-30), duration: 0.5 });
-            
+            gsap.to(bones.r_wrist.rotation, { x: 0, y: 0, z: 0, duration: 0.5 });
+
+            // ΦΑΣΗ 1: Δάχτυλα κλειστά (σαν την 1η φάση του ευχαριστώ)
+            if(bones.r_joints['thumb1']) gsap.to(bones.r_joints['thumb1'].rotation, {x: deg(14), y: deg(-14), z: deg(27), duration: 0.4});
+            if(bones.r_joints['index1']) gsap.to(bones.r_joints['index1'].rotation, {x: deg(52), y: 0, z: deg(9), duration: 0.4});
+            if(bones.r_joints['middle1']) gsap.to(bones.r_joints['middle1'].rotation, {x: deg(55), y: deg(4), z: deg(3), duration: 0.4});
+            if(bones.r_joints['ring1']) gsap.to(bones.r_joints['ring1'].rotation, {x: deg(51), y: deg(5), z: deg(-4), duration: 0.4});
+            if(bones.r_joints['pinky1']) gsap.to(bones.r_joints['pinky1'].rotation, {x: deg(52), y: deg(-31), z: deg(-8), duration: 0.4});
+
             setTimeout(() => {
-                // Φάση 1: Κλείσιμο βάσης
-                if(bones.r_joints['thumb1']) gsap.to(bones.r_joints['thumb1'].rotation, {x: deg(14), y: deg(-14), z: deg(27), duration: 0.2});
-                if(bones.r_joints['index1']) gsap.to(bones.r_joints['index1'].rotation, {x: deg(52), y: 0, z: deg(9), duration: 0.2});
-                if(bones.r_joints['middle1']) gsap.to(bones.r_joints['middle1'].rotation, {x: deg(55), y: deg(4), z: deg(3), duration: 0.2});
-                if(bones.r_joints['ring1']) gsap.to(bones.r_joints['ring1'].rotation, {x: deg(51), y: deg(5), z: deg(-4), duration: 0.2});
-                if(bones.r_joints['pinky1']) gsap.to(bones.r_joints['pinky1'].rotation, {x: deg(52), y: deg(-31), z: deg(-8), duration: 0.2});
+                // ΦΑΣΗ 2: Γυρίζει ο καρπός προς τα μπροστά & ισιώνει ο δείκτης (Kalimera Part 2)
+                gsap.to(bones.r_wrist.rotation, { x: 0, y: deg(-90), z: deg(-30), duration: 0.3 }); 
+                customKalimeraPart2('r', 0.3); 
 
                 setTimeout(() => {
-                    customKalimeraPart2('r', 0.2);
-
-                    setTimeout(() => {
-                        const indexBones = [bones.r_joints['index1'], bones.r_joints['index2'], bones.r_joints['index3']].filter(b=>b);
-                        const flick = gsap.timeline({ repeat: 1, onComplete: finalize_gesture });
-                        flick.to(indexBones.map(b=>b.rotation), { x: deg(60), duration: 0.15, ease: "power1.inOut" })
-                             .to(indexBones.map(b=>b.rotation), { x: 0, duration: 0.15, ease: "power1.inOut" });
-                    }, 300);
-
+                    // ΦΑΣΗ 3: Ανοιγοκλείσιμο του δείκτη στην κάμερα
+                    const indexBones = [bones.r_joints['index1'], bones.r_joints['index2'], bones.r_joints['index3']].filter(b=>b);
+                    const flick = gsap.timeline({ repeat: 1, onComplete: finalize_gesture });
+                    flick.to(indexBones.map(b=>b.rotation), { x: deg(60), duration: 0.15, ease: "power1.inOut" })
+                         .to(indexBones.map(b=>b.rotation), { x: 0, duration: 0.15, ease: "power1.inOut" });
                 }, 400);
 
             }, 600);
@@ -243,46 +241,40 @@
 
         function gesture_onoma() {
             is_busy = true;
-            // ΦΑΣΗ 1: ΔΕΙΧΝΕΙ ΤΗΝ ΚΑΜΕΡΑ (ΔΙΟΡΘΩΣΗ #3)
-            // Σηκώνει τα χέρια ευθεία μπροστά
-            gsap.to(bones.r_shoulder.rotation, { x: deg(75), y: 0, z: deg(-10), duration: 0.5 });
-            gsap.to(bones.r_elbow.rotation, { x: deg(15), y: 0, z: 0, duration: 0.5 });
+            // ΦΑΣΗ 1: ΔΕΙΧΝΕΙ ΤΗΝ ΚΑΜΕΡΑ (ΜΟΝΟ ΜΕ ΤΟ ΔΕΞΙ ΧΕΡΙ στο ύψος του στέρνου)
+            // Ο αριστερός ώμος μένει στη βάση του
+            gsap.to(bones.r_shoulder.rotation, { x: deg(15), y: deg(-20), z: deg(-40), duration: 0.5 });
+            gsap.to(bones.r_elbow.rotation, { x: deg(5), y: 0, z: 0, duration: 0.5 });
             gsap.to(bones.r_wrist.rotation, { x: 0, y: 0, z: 0, duration: 0.5 });
-
-            gsap.to(bones.l_shoulder.rotation, { x: deg(75), y: 0, z: deg(10), duration: 0.5 });
-            gsap.to(bones.l_elbow.rotation, { x: deg(15), y: 0, z: 0, duration: 0.5 });
-            gsap.to(bones.l_wrist.rotation, { x: 0, y: 0, z: 0, duration: 0.5 });
             
-            setTimeout(() => {
-                // Φτιάχνει τη γροθιά με δείκτη ίσιο (point)
-                customKalimeraPart2('r', 0.2);
-                customKalimeraPart2('l', 0.2); 
+            customKalimeraPart2('r', 0.3); // Κάνει γροθιά με δείκτη ίσιο
 
-                // Κρατάει το δείξιμο για μισό δευτερόλεπτο και μετά ξεκινά τα κυκλάκια
+            setTimeout(() => {
+                // ΦΑΣΗ 2: Μετάβαση στη θέση για τα κυκλάκια (Και τα δύο χέρια τώρα)
+                gsap.to(bones.r_shoulder.rotation, { x: deg(25), y: deg(7), z: deg(-51), duration: 0.5 });
+                gsap.to(bones.r_elbow.rotation, { x: deg(59), y: deg(1), z: deg(-48), duration: 0.5 });
+                gsap.to(bones.l_shoulder.rotation, { x: deg(25), y: deg(-7), z: deg(51), duration: 0.5 });
+                gsap.to(bones.l_elbow.rotation, { x: deg(59), y: deg(1), z: deg(48), duration: 0.5 });
+                
+                customKalimeraPart2('l', 0.5); // Τώρα ετοιμάζει και το αριστερό χέρι για τα κυκλάκια
+
                 setTimeout(() => {
-                    // Επαναφορά στη θέση για τα κυκλάκια
-                    gsap.to(bones.r_shoulder.rotation, { x: deg(25), y: deg(7), z: deg(-51), duration: 0.5 });
-                    gsap.to(bones.r_elbow.rotation, { x: deg(59), y: deg(1), z: deg(-48), duration: 0.5 });
-                    gsap.to(bones.l_shoulder.rotation, { x: deg(25), y: deg(-7), z: deg(51), duration: 0.5 });
-                    gsap.to(bones.l_elbow.rotation, { x: deg(59), y: deg(1), z: deg(48), duration: 0.5 });
-                    
-                    setTimeout(() => {
-                        let start = Date.now();
-                        const draw = () => {
-                            let el = (Date.now() - start) / 1000;
-                            if (el < 3.2) {
-                                const r = 0.35; 
-                                bones.r_wrist.rotation.x = Math.sin(el * 11) * r;
-                                bones.r_wrist.rotation.y = Math.cos(el * 11) * r;
-                                bones.l_wrist.rotation.x = Math.sin(el * 11) * r;
-                                bones.l_wrist.rotation.y = -Math.cos(el * 11) * r;
-                                requestAnimationFrame(draw);
-                            } else { finalize_gesture(); }
-                        };
-                        draw();
-                    }, 500); // Χρόνος μετάβασης στα κυκλάκια
-                }, 600); // Χρόνος που κρατάει το "point"
-            }, 500); // Χρόνος που παίρνει για να σηκώσει τα χέρια
+                    // ΦΑΣΗ 3: Τα κυκλάκια
+                    let start = Date.now();
+                    const draw = () => {
+                        let el = (Date.now() - start) / 1000;
+                        if (el < 3.2) {
+                            const r = 0.35; 
+                            bones.r_wrist.rotation.x = Math.sin(el * 11) * r;
+                            bones.r_wrist.rotation.y = Math.cos(el * 11) * r;
+                            bones.l_wrist.rotation.x = Math.sin(el * 11) * r;
+                            bones.l_wrist.rotation.y = -Math.cos(el * 11) * r;
+                            requestAnimationFrame(draw);
+                        } else { finalize_gesture(); }
+                    };
+                    draw();
+                }, 500); 
+            }, 1000); // Κρατάει το δείξιμο προς την κάμερα για 1 δευτερόλεπτο
         }
 
         // (ΑΜΕΤΑΒΛΗΤΑ ΓΙΑ "ΜΕΣΗΜΕΡΙ" ΚΑΙ "ΓΕΙΑ")
@@ -308,7 +300,7 @@
             }, 600);
         }
 
-        // --- ΦΩΝΗΤΙΚΟΣ ΕΛΕΓΧΟΣ ΜΕ ΤΗ ΧΡΗΣΗ ΤΗΣ ΟΥΡΑΣ (ΔΙΟΡΘΩΣΗ #4) ---
+        // --- ΦΩΝΗΤΙΚΟΣ ΕΛΕΓΧΟΣ ΜΕ ΤΗ ΧΡΗΣΗ ΤΗΣ ΟΥΡΑΣ ---
         const micBtn = document.getElementById('mic-btn');
         const subtitle = document.getElementById('subtitle');
         let recognition = null;
@@ -328,21 +320,16 @@
                 text = text.toLowerCase().trim();
                 subtitle.innerText = "Είπες: " + text;
 
-                // Τώρα δεν κάνουμε return αν είναι busy (is_busy). Βάζουμε τη λέξη στην ουρά!
-                if (text.includes("ευχαριστώ") || text.includes("ευχαριστω")) { 
-                    enqueueGesture('efcharisto'); 
-                }
-                else if (text.includes("καλημέρα") || text.includes("καλημερα")) { 
-                    enqueueGesture('kalimera'); 
-                }
-                else if (text.includes("μεσημέρι") || text.includes("μεσημερι")) { 
-                    enqueueGesture('mesimeri'); 
-                }
-                else if (text.includes("γεια") || text.includes("χαίρετε")) { 
-                    enqueueGesture('geia'); 
-                }
-                else if (text.includes("όνομα") || text.includes("ποιο") || text.includes("ειναι") || text.includes("όνομά") || text.includes("σου")) { 
-                    enqueueGesture('onoma'); 
+                let matchedGesture = null;
+                if (text.includes("ευχαριστώ") || text.includes("ευχαριστω")) matchedGesture = 'efcharisto';
+                else if (text.includes("καλημέρα") || text.includes("καλημερα")) matchedGesture = 'kalimera';
+                else if (text.includes("μεσημέρι") || text.includes("μεσημερι")) matchedGesture = 'mesimeri';
+                else if (text.includes("γεια") || text.includes("χαίρετε")) matchedGesture = 'geia';
+                else if (text.includes("όνομα") || text.includes("ποιο") || text.includes("ειναι") || text.includes("όνομά") || text.includes("σου")) matchedGesture = 'onoma';
+
+                // Αν βρήκαμε λέξη-κλειδί, την στέλνουμε στην ουρά
+                if (matchedGesture) {
+                    enqueueGesture(matchedGesture);
                 }
             };
             recognition.onend = () => { if(isListening) recognition.start(); };
