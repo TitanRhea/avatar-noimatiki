@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Web Avatar - Final Fixed GSL Flow</title>
+    <title>Web Avatar - Total Finger Control Debugger</title>
     <style>
         body { margin: 0; overflow: hidden; background-color: #f0e6dc; font-family: 'Segoe UI', sans-serif; }
         #canvas-container { width: 100vw; height: 100vh; display: block; }
@@ -23,37 +23,73 @@
             cursor: pointer; border: none; background: #4CAF50; color: white; font-weight: bold; transition: 0.3s;
         }
         button.listening { background-color: #f44336; }
-        select { font-size: 16px; padding: 12px; border-radius: 10px; border: 1px solid #ddd; }
+        select { font-size: 16px; padding: 12px; border-radius: 10px; border: 1px solid #ddd; background: white;}
 
-        /* --- ΝΕΟ CSS ΓΙΑ ΤΟ ΕΡΓΑΛΕΙΟ ΔΟΚΙΜΗΣ --- */
+        /* --- CSS ΓΙΑ ΤΟ ΠΑΝΙΣΧΥΡΟ ΕΡΓΑΛΕΙΟ ΔΟΚΙΜΗΣ --- */
         #debug-panel {
-            position: absolute; top: 15px; left: 15px; background: rgba(255, 255, 255, 0.95);
-            padding: 20px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.2);
-            font-family: sans-serif; pointer-events: auto; width: 250px;
+            position: absolute; top: 10px; left: 10px; background: rgba(255, 255, 255, 0.98);
+            padding: 15px; border-radius: 12px; box-shadow: 0 4px 20px rgba(0,0,0,0.3);
+            font-family: sans-serif; pointer-events: auto; width: 320px;
+            max-height: 90vh; overflow-y: auto; z-index: 1000;
         }
-        #debug-panel h3 { margin-top: 0; font-size: 16px; color: #333; text-align: center; }
-        #debug-panel label { font-size: 14px; font-weight: bold; color: #555; }
-        #debug-panel input { width: 100%; margin-bottom: 15px; }
-        .reset-btn { width: 100%; background: #2196F3; font-size: 14px; padding: 10px; }
+        #debug-panel h2 { margin-top: 0; font-size: 18px; color: #333; text-align: center; border-bottom: 2px solid #ddd; padding-bottom: 5px;}
+        #debug-panel h3 { font-size: 14px; margin-bottom: 5px; color: #555;}
+        .debug-select { width: 100%; padding: 8px; margin-bottom: 10px; font-size: 14px;}
+        .slider-group { background: #f9f9f9; padding: 10px; border-radius: 8px; margin-bottom: 10px; border: 1px solid #eee;}
+        .slider-group label { font-size: 13px; font-weight: bold; color: #444; display: block; margin-bottom: 5px;}
+        .slider-group input { width: 100%; margin: 0; }
+        .val-display { float: right; color: #2196F3; font-weight: bold;}
+        .debug-btns { display: flex; gap: 5px; }
+        .reset-btn { flex: 1; background: #FF9800; font-size: 14px; padding: 10px; }
+        .export-btn { flex: 1; background: #2196F3; font-size: 14px; padding: 10px; }
+        #export-area { width: 100%; height: 100px; margin-top: 10px; display: none; font-family: monospace; font-size: 11px;}
     </style>
 </head>
 <body>
 
     <div id="canvas-container"></div>
     
-    <!-- --- ΝΕΟ ΕΡΓΑΛΕΙΟ ΔΟΚΙΜΗΣ ΣΤΟ HTML --- -->
     <div id="debug-panel">
-        <h3>🛠️ Τεστ Δακτύλων (Δεξί)</h3>
-        <label>Άξονας X: <span id="valX">0</span>°</label><br>
-        <input type="range" id="sliderX" min="-180" max="180" value="0" oninput="updateDebug()">
+        <h2>🛠️ Εργαλείο Άκρων (v2)</h2>
         
-        <label>Άξονας Y: <span id="valY">0</span>°</label><br>
-        <input type="range" id="sliderY" min="-180" max="180" value="0" oninput="updateDebug()">
+        <h3>1. Επιλογή Χεριού</h3>
+        <select id="hand-select" class="debug-select" onchange="loadCurrentAngles()">
+            <option value="right">▶️ Δεξί Χέρι</option>
+            <option value="left">◀️ Αριστερό Χέρι</option>
+        </select>
+
+        <h3>2. Επιλογή Δακτύλου</h3>
+        <select id="finger-select" class="debug-select" onchange="loadCurrentAngles()">
+            <option value="thumb">👍 Αντίχειρας (Thumb)</option>
+            <option value="index" selected>☝️ Δείκτης (Index)</option>
+            <option value="middle">🖕 Μεσαίος (Middle)</option>
+            <option value="ring">💍 Παράμεσος (Ring)</option>
+            <option value="pinky">🤏 Μικρός (Pinky)</option>
+        </select>
+
+        <h3>3. Επιλογή Άρθρωσης</h3>
+        <select id="joint-select" class="debug-select" onchange="loadCurrentAngles()">
+            <option value="1" selected>🦴 Βάση (MCP)</option>
+            <option value="2">🦴 Μέση (PIP)</option>
+            <option value="3">🦴 Άκρη (DIP)</option>
+        </select>
         
-        <label>Άξονας Z: <span id="valZ">0</span>°</label><br>
-        <input type="range" id="sliderZ" min="-180" max="180" value="0" oninput="updateDebug()">
+        <div class="slider-group">
+            <label>Άξονας X (Κάμψη/Έκταση): <span id="valX" class="val-display">0</span>°</label>
+            <input type="range" id="sliderX" min="-180" max="180" value="0" oninput="updateBoneRotation()">
+            
+            <label>Άξονας Y (Απόκλιση): <span id="valY" class="val-display">0</span>°</label>
+            <input type="range" id="sliderY" min="-180" max="180" value="0" oninput="updateBoneRotation()">
+            
+            <label>Άξονας Z (Περιστροφή): <span id="valZ" class="val-display">0</span>°</label>
+            <input type="range" id="sliderZ" min="-180" max="180" value="0" oninput="updateBoneRotation()">
+        </div>
         
-        <button class="reset-btn" onclick="resetDebug()">🔄 Μηδενισμός</button>
+        <div class="debug-btns">
+            <button class="reset-btn" onclick="resetCurrentFinger()">🔄 Μηδενισμός</button>
+            <button class="export-btn" onclick="exportData()">📥 Εξαγωγή</button>
+        </div>
+        <textarea id="export-area" readonly placeholder="Τα JSON δεδομένα θα εμφανιστούν εδώ..."></textarea>
     </div>
 
     <div id="ui-layer">
@@ -73,6 +109,7 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/gsap.min.js"></script>
 
     <script>
+        // === THREE.JS SETUP (ΚΛΕΙΔΩΜΕΝΟ) ===
         const scene = new THREE.Scene();
         scene.background = new THREE.Color(0xf0e6dc);
         const camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 100);
@@ -93,11 +130,28 @@
         let currentModel = null, bones = {}, is_busy = false;
         let last_trigger_time = 0; 
         const deg = (d) => d * (Math.PI / 180);
+        const rad = (r) => r * (180 / Math.PI); // Μετατροπή σε μοίρες
         const basePose = { x: 54, y: 30, z: 17 };
+
+        // === ΔΟΜΗ ΔΕΔΟΜΕΝΩΝ ΓΙΑ ΤΟ DEBUGGING (Κάθε άρθρωση ξεχωριστά) ===
+        const fingerNames = ['thumb', 'index', 'middle', 'ring', 'pinky'];
+        const jointNames = ['1', '2', '3'];
+        
+        // Αποθηκεύει τις τρέχουσες γωνίες (σε μοίρες) για όλα τα δάχτυλα
+        let debugAngles = { right: {}, left: {} };
+
+        // Αρχικοποίηση debugAngles με 0
+        ['right', 'left'].forEach(side => {
+            fingerNames.forEach(f => {
+                debugAngles[side][f] = {};
+                jointNames.forEach(j => { debugAngles[side][f][j] = {x:0, y:0, z:0}; });
+            });
+        });
 
         function loadAvatar(file) {
             if (currentModel) scene.remove(currentModel);
-            bones = { r_fingers: [], l_fingers: [] };
+            bones = { r_fingers: {}, l_fingers: {} }; // Νέα δομή για εύκολη πρόσβαση MCP/PIP/DIP
+            
             new THREE.GLTFLoader().load(file, (gltf) => {
                 currentModel = gltf.scene;
                 currentModel.position.set(0, 0.6, 0); 
@@ -113,47 +167,105 @@
                         if (b.endsWith('leftforearm')) bones.l_elbow = n;
                         if (b.endsWith('righthand')) bones.r_wrist = n;
                         if (b.endsWith('lefthand')) bones.l_wrist = n;
-                        if (b.includes('righthand') && !b.endsWith('righthand')) bones.r_fingers.push(n);
-                        if (b.includes('lefthand') && !b.endsWith('lefthand')) bones.l_fingers.push(n);
+
+                        // Χαρτογράφηση δακτύλων MCP(1), PIP(2), DIP(3)
+                        fingerNames.forEach(finger => {
+                            jointNames.forEach(joint => {
+                                // Mixamo naming standard: e.g., "RightHandIndex1"
+                                if (b.includes('righthand' + finger) && b.endsWith(finger + joint)) bones.r_fingers[finger + joint] = n;
+                                if (b.includes('lefthand' + finger) && b.endsWith(finger + joint)) bones.l_fingers[finger + joint] = n;
+                            });
+                        });
                     }
                 });
                 resetPose(0.1);
+                loadCurrentAngles(); // Ενημέρωση των sliders με τις αρχικές γωνίες (0)
             });
         }
 
-        // --- ΝΕΕΣ ΣΥΝΑΡΤΗΣΕΙΣ ΓΙΑ ΤΟ ΕΡΓΑΛΕΙΟ ΔΟΚΙΜΗΣ ---
-        function updateDebug() {
-            const x = document.getElementById('sliderX').value;
-            const y = document.getElementById('sliderY').value;
-            const z = document.getElementById('sliderZ').value;
+        // === ΣΥΝΑΡΤΗΣΕΙΣ ΛΟΓΙΚΗΣ ΤΟΥ DEBUG PANEL ===
+
+        function updateBoneRotation() {
+            if (!currentModel) return;
+            is_busy = true; // "Παγώνουμε" τις φωνητικές εντολές
+
+            const side = document.getElementById('hand-select').value;
+            const finger = document.getElementById('finger-select').value;
+            const joint = document.getElementById('joint-select').value;
             
+            const x = parseFloat(document.getElementById('sliderX').value);
+            const y = parseFloat(document.getElementById('sliderY').value);
+            const z = parseFloat(document.getElementById('sliderZ').value);
+            
+            // Ενημέρωση displays
             document.getElementById('valX').innerText = x;
             document.getElementById('valY').innerText = y;
             document.getElementById('valZ').innerText = z;
 
-            // Εφαρμόζουμε ζωντανά τις τιμές στα 4 δάχτυλα του ΔΕΞΙΟΥ χεριού
-            bones.r_fingers.forEach(f => {
-                if(!f.name.toLowerCase().includes('thumb')) { // Αφήνουμε τον αντίχειρα εκτός για να βλέπουμε καθαρά
-                    f.rotation.x = deg(x);
-                    f.rotation.y = deg(y);
-                    f.rotation.z = deg(z);
-                }
+            // Αποθήκευση στο debugAngles object
+            debugAngles[side][finger][joint] = {x, y, z};
+
+            // Εφαρμογή στο Three.js Bone
+            const boneMap = side === 'right' ? bones.r_fingers : bones.l_fingers;
+            const boneName = finger + joint;
+            
+            if (boneMap[boneName]) {
+                // Χρήση setRotationFromEuler για ακρίβεια (σειρά XYZ)
+                boneMap[boneName].rotation.x = deg(x);
+                boneMap[boneName].rotation.y = deg(y);
+                boneMap[boneName].rotation.z = deg(z);
+            }
+        }
+
+        // Φορτώνει τις αποθηκευμένες γωνίες στα sliders όταν αλλάζεις dropdown
+        function loadCurrentAngles() {
+            const side = document.getElementById('hand-select').value;
+            const finger = document.getElementById('finger-select').value;
+            const joint = document.getElementById('joint-select').value;
+            
+            const angles = debugAngles[side][finger][joint];
+
+            document.getElementById('sliderX').value = angles.x;
+            document.getElementById('sliderY').value = angles.y;
+            document.getElementById('sliderZ').value = angles.z;
+            
+            document.getElementById('valX').innerText = angles.x;
+            document.getElementById('valY').innerText = angles.y;
+            document.getElementById('valZ').innerText = angles.z;
+        }
+
+        // Μηδενίζει μόνο το επιλεγμένο δάχτυλο
+        function resetCurrentFinger() {
+            const side = document.getElementById('hand-select').value;
+            const finger = document.getElementById('finger-select').value;
+            const boneMap = side === 'right' ? bones.r_fingers : bones.l_fingers;
+
+            jointNames.forEach(joint => {
+                debugAngles[side][finger][joint] = {x:0, y:0, z:0};
+                const boneName = finger + joint;
+                if(boneMap[boneName]) boneMap[boneName].rotation.set(0,0,0);
             });
+            loadCurrentAngles(); // Reset sliders display
         }
 
-        function resetDebug() {
-            document.getElementById('sliderX').value = 0;
-            document.getElementById('sliderY').value = 0;
-            document.getElementById('sliderZ').value = 0;
-            updateDebug();
+        // Εξαγωγή JSON δεδομένων
+        function exportData() {
+            const area = document.getElementById('export-area');
+            area.style.display = 'block';
+            area.value = "// COPY ΚΑΙ PASTE ΑΥΤΟ ΤΟ ΚΕΙΜΕΝΟ ΣΤΟ CHAT:\n" + JSON.stringify(debugAngles, null, 2);
+            area.select();
         }
 
-        // --- ΚΛΕΙΔΩΜΕΝΗ naturalCurl ΑΠΟ ΤΟ ΠΡΟΗΓΟΥΜΕΝΟ ΣΟΥ ΑΡΧΕΙΟ ---
+        // === ΛΟΓΙΚΗ naturalCurl ΑΠΟ ΤΟ ΠΡΟΗΓΟΥΜΕΝΟ ΣΟΥ ΑΡΧΕΙΟ (ΑΜΕΤΑΒΛΗΤΟ) ===
         function naturalCurl(side, amount, skipIndex = false, duration = 0.5) {
-            const list = side === 'r' ? bones.r_fingers : bones.l_fingers;
+            if (!currentModel) return;
+            const boneMap = side === 'r' ? bones.r_fingers : bones.l_fingers;
             const dir = side === 'r' ? -1 : 1; 
             
-            list.forEach(f => {
+            // Μετατροπή MCP, PIP, DIP σε array για looping
+            const boneArray = Object.values(boneMap);
+
+            boneArray.forEach(f => {
                 const name = f.name.toLowerCase();
                 if (skipIndex && name.includes('index')) return;
                 
@@ -167,14 +279,20 @@
 
         function resetPose(speed = 0.5) {
             if (!bones.r_shoulder) return;
+            // Απενεργοποίηση debug 'busy'
+            is_busy = false; 
+            const area = document.getElementById('export-area');
+            if(area) area.style.display = 'none';
+
             gsap.to(bones.r_shoulder.rotation, { x: deg(basePose.x), y: deg(basePose.y), z: deg(basePose.z), duration: speed });
             gsap.to(bones.l_shoulder.rotation, { x: deg(basePose.x), y: deg(-basePose.y), z: deg(-basePose.z), duration: speed });
             [bones.r_elbow, bones.l_elbow, bones.r_wrist, bones.l_wrist].forEach(b => { if(b) gsap.to(b.rotation, { x: 0, y: 0, z: 0, duration: speed }); });
-            bones.r_fingers.concat(bones.l_fingers).forEach(f => gsap.to(f.rotation, { x:0, y:0, z:0, duration: speed }));
-            setTimeout(() => { is_busy = false; }, speed * 1000 + 100);
+            
+            // Reset δακτύλων MCP,PIP,DIP (r_fingers/l_fingers είναι objects πλέον)
+            Object.values(bones.r_fingers).concat(Object.values(bones.l_fingers)).forEach(f => gsap.to(f.rotation, { x:0, y:0, z:0, duration: speed }));
         }
 
-        // --- ΚΙΝΗΣΕΙΣ (ΚΛΕΙΔΩΜΕΝΕΣ ΩΣ ΕΧΟΥΝ) ---
+        // === ΚΙΝΗΣΕΙΣ ΩΣ ΕΧΟΥΝ (ΑΜΕΤΑΒΛΗΤΑ TRIGGERS) ===
 
         function gesture_efcharisto() {
             is_busy = true;
@@ -200,10 +318,14 @@
             setTimeout(() => {
                 gsap.to(bones.r_wrist.rotation, { y: deg(-65), duration: 0.3 });
                 naturalCurl('r', 85, true); 
-                const index = bones.r_fingers.filter(f => f.name.toLowerCase().includes('index'));
+                const indexBone = bones.r_fingers['index1']; // MCP
+                const indexBone2 = bones.r_fingers['index2']; // PIP
+                const indexBone3 = bones.r_fingers['index3']; // DIP
+                const flickBones = [indexBone, indexBone2, indexBone3].filter(b=>b);
+
                 const flick = gsap.timeline({ repeat: 1, onComplete: finalize_gesture });
-                flick.to(index.map(b=>b.rotation), { z: deg(-60), duration: 0.15, ease: "power1.inOut" })
-                     .to(index.map(b=>b.rotation), { z: deg(-10), duration: 0.15, ease: "power1.inOut" });
+                flick.to(flickBones.map(b=>b.rotation), { z: deg(-60), duration: 0.15, ease: "power1.inOut" })
+                     .to(flickBones.map(b=>b.rotation), { z: deg(-10), duration: 0.15, ease: "power1.inOut" });
             }, 600);
         }
 
@@ -258,7 +380,7 @@
 
         function finalize_gesture() { resetPose(); }
 
-        // --- ΦΩΝΗΤΙΚΟΣ ΕΛΕΓΧΟΣ ---
+        // === ΦΩΝΗΤΙΚΟΣ ΕΛΕΓΧΟΣ (ΑΜΕΤΑΒΛΗΤΟ) ===
         const micBtn = document.getElementById('mic-btn');
         const subtitle = document.getElementById('subtitle');
         let recognition = null;
