@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Web Avatar - 1Final Fixed GSL Flow</title>
+    <title>Web Avatar - 3Final Fixed GSL Flow</title>
     <style>
         body { margin: 0; overflow: hidden; background-color: #f0e6dc; font-family: 'Segoe UI', sans-serif; }
         #canvas-container { width: 100vw; height: 100vh; display: block; }
@@ -95,7 +95,7 @@
             });
         }
 
-        // --- ΔΙΟΡΘΩΜΕΝΗ naturalCurl: ΚΛΕΙΝΕΙ ΠΡΟΣ ΤΑ ΜΕΣΑ ---
+        // --- ΔΙΟΡΘΩΜΕΝΗ naturalCurl: ΚΛΕΙΝΕΙ ΠΡΟΣ ΤΑ ΜΕΣΑ (ΣΦΙΧΤΗ ΓΡΟΘΙΑ) ---
         function naturalCurl(side, amount, skipIndex = false, duration = 0.5) {
             const list = side === 'r' ? bones.r_fingers : bones.l_fingers;
             // Αντιστροφή προσήμου για κάμψη προς την παλάμη (Mixamo standard)
@@ -105,9 +105,15 @@
                 const name = f.name.toLowerCase();
                 if (skipIndex && name.includes('index')) return;
                 
-                let mult = 0.9; // Βάση
-                if (name.includes('2')) mult = 1.1; // Μέση
-                if (name.includes('3')) mult = 0.6; // Άκρη
+                // Δραστική αύξηση πολλαπλασιαστών (multipliers) για σφιχτό κλείσιμο
+                let mult = 1.1; // Βάση (MCP) - Λυγίζει λίγο παραπάνω
+                if (name.includes('2')) mult = 1.6; // Μέση (PIP) - Βαθύ δίπλωμα
+                if (name.includes('3')) mult = 1.5; // Άκρη (DIP) - Κλείνει ακουμπώντας την παλάμη
+                
+                // Ελαφριά μείωση στη βάση του αντίχειρα για να μην τρυπάει την παλάμη
+                if (name.includes('thumb') && !name.includes('2') && !name.includes('3')) {
+                    mult = 0.7;
+                }
                 
                 gsap.to(f.rotation, { z: deg(amount * dir * mult), duration: duration, ease: "power2.out" });
             });
