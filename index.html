@@ -130,17 +130,14 @@
         let currentModel = null, bones = {}, is_busy = false;
         let last_trigger_time = 0; 
         const deg = (d) => d * (Math.PI / 180);
-        const rad = (r) => r * (180 / Math.PI); // Μετατροπή σε μοίρες
+        const rad = (r) => r * (180 / Math.PI); 
         const basePose = { x: 54, y: 30, z: 17 };
 
-        // === ΔΟΜΗ ΔΕΔΟΜΕΝΩΝ ΓΙΑ ΤΟ DEBUGGING (Κάθε άρθρωση ξεχωριστά) ===
+        // === ΔΟΜΗ ΔΕΔΟΜΕΝΩΝ ΓΙΑ ΤΟ DEBUGGING ===
         const fingerNames = ['thumb', 'index', 'middle', 'ring', 'pinky'];
         const jointNames = ['1', '2', '3'];
-        
-        // Αποθηκεύει τις τρέχουσες γωνίες (σε μοίρες) για όλα τα δάχτυλα
         let debugAngles = { right: {}, left: {} };
 
-        // Αρχικοποίηση debugAngles με 0
         ['right', 'left'].forEach(side => {
             fingerNames.forEach(f => {
                 debugAngles[side][f] = {};
@@ -150,7 +147,7 @@
 
         function loadAvatar(file) {
             if (currentModel) scene.remove(currentModel);
-            bones = { r_fingers: {}, l_fingers: {} }; // Νέα δομή για εύκολη πρόσβαση MCP/PIP/DIP
+            bones = { r_fingers: {}, l_fingers: {} }; 
             
             new THREE.GLTFLoader().load(file, (gltf) => {
                 currentModel = gltf.scene;
@@ -168,10 +165,8 @@
                         if (b.endsWith('righthand')) bones.r_wrist = n;
                         if (b.endsWith('lefthand')) bones.l_wrist = n;
 
-                        // Χαρτογράφηση δακτύλων MCP(1), PIP(2), DIP(3)
                         fingerNames.forEach(finger => {
                             jointNames.forEach(joint => {
-                                // Mixamo naming standard: e.g., "RightHandIndex1"
                                 if (b.includes('righthand' + finger) && b.endsWith(finger + joint)) bones.r_fingers[finger + joint] = n;
                                 if (b.includes('lefthand' + finger) && b.endsWith(finger + joint)) bones.l_fingers[finger + joint] = n;
                             });
@@ -179,15 +174,14 @@
                     }
                 });
                 resetPose(0.1);
-                loadCurrentAngles(); // Ενημέρωση των sliders με τις αρχικές γωνίες (0)
+                loadCurrentAngles(); 
             });
         }
 
         // === ΣΥΝΑΡΤΗΣΕΙΣ ΛΟΓΙΚΗΣ ΤΟΥ DEBUG PANEL ===
-
         function updateBoneRotation() {
             if (!currentModel) return;
-            is_busy = true; // "Παγώνουμε" τις φωνητικές εντολές
+            is_busy = true; 
 
             const side = document.getElementById('hand-select').value;
             const finger = document.getElementById('finger-select').value;
@@ -197,32 +191,26 @@
             const y = parseFloat(document.getElementById('sliderY').value);
             const z = parseFloat(document.getElementById('sliderZ').value);
             
-            // Ενημέρωση displays
             document.getElementById('valX').innerText = x;
             document.getElementById('valY').innerText = y;
             document.getElementById('valZ').innerText = z;
 
-            // Αποθήκευση στο debugAngles object
             debugAngles[side][finger][joint] = {x, y, z};
 
-            // Εφαρμογή στο Three.js Bone
             const boneMap = side === 'right' ? bones.r_fingers : bones.l_fingers;
             const boneName = finger + joint;
             
             if (boneMap[boneName]) {
-                // Χρήση setRotationFromEuler για ακρίβεια (σειρά XYZ)
                 boneMap[boneName].rotation.x = deg(x);
                 boneMap[boneName].rotation.y = deg(y);
                 boneMap[boneName].rotation.z = deg(z);
             }
         }
 
-        // Φορτώνει τις αποθηκευμένες γωνίες στα sliders όταν αλλάζεις dropdown
         function loadCurrentAngles() {
             const side = document.getElementById('hand-select').value;
             const finger = document.getElementById('finger-select').value;
             const joint = document.getElementById('joint-select').value;
-            
             const angles = debugAngles[side][finger][joint];
 
             document.getElementById('sliderX').value = angles.x;
@@ -234,7 +222,6 @@
             document.getElementById('valZ').innerText = angles.z;
         }
 
-        // Μηδενίζει μόνο το επιλεγμένο δάχτυλο
         function resetCurrentFinger() {
             const side = document.getElementById('hand-select').value;
             const finger = document.getElementById('finger-select').value;
@@ -245,10 +232,9 @@
                 const boneName = finger + joint;
                 if(boneMap[boneName]) boneMap[boneName].rotation.set(0,0,0);
             });
-            loadCurrentAngles(); // Reset sliders display
+            loadCurrentAngles(); 
         }
 
-        // Εξαγωγή JSON δεδομένων
         function exportData() {
             const area = document.getElementById('export-area');
             area.style.display = 'block';
@@ -256,30 +242,52 @@
             area.select();
         }
 
-        // === ΛΟΓΙΚΗ naturalCurl ΑΠΟ ΤΟ ΠΡΟΗΓΟΥΜΕΝΟ ΣΟΥ ΑΡΧΕΙΟ (ΑΜΕΤΑΒΛΗΤΟ) ===
+        // === ΝΕΕΣ ΣΥΝΑΡΤΗΣΕΙΣ ΜΕ ΤΑ ΔΙΚΑ ΣΟΥ ΝΟΥΜΕΡΑ ΓΙΑ ΤΟ "ΕΥΧΑΡΙΣΤΩ" ===
+        function customFist(duration = 0.1) {
+            if (!currentModel) return;
+            
+            // ΑΡΙΣΤΕΡΟ ΧΕΡΙ 
+            if(bones.l_fingers['thumb1']) gsap.to(bones.l_fingers['thumb1'].rotation, {x: deg(55), y: deg(11), z: 0, duration: duration});
+            if(bones.l_fingers['index1']) gsap.to(bones.l_fingers['index1'].rotation, {x: deg(90), y: 0, z: 0, duration: duration});
+            if(bones.l_fingers['middle1']) gsap.to(bones.l_fingers['middle1'].rotation, {x: deg(90), y: 0, z: 0, duration: duration});
+            if(bones.l_fingers['ring1']) gsap.to(bones.l_fingers['ring1'].rotation, {x: deg(90), y: 0, z: 0, duration: duration});
+            if(bones.l_fingers['pinky1']) gsap.to(bones.l_fingers['pinky1'].rotation, {x: deg(90), y: 0, z: 0, duration: duration});
+
+            // ΔΕΞΙ ΧΕΡΙ (Νέα δεδομένα: x:52, y:0 για τον αντίχειρα)
+            if(bones.r_fingers['thumb1']) gsap.to(bones.r_fingers['thumb1'].rotation, {x: deg(52), y: 0, z: 0, duration: duration});
+            if(bones.r_fingers['index1']) gsap.to(bones.r_fingers['index1'].rotation, {x: deg(90), y: 0, z: 0, duration: duration});
+            if(bones.r_fingers['middle1']) gsap.to(bones.r_fingers['middle1'].rotation, {x: deg(90), y: 0, z: 0, duration: duration});
+            if(bones.r_fingers['ring1']) gsap.to(bones.r_fingers['ring1'].rotation, {x: deg(90), y: 0, z: 0, duration: duration});
+            if(bones.r_fingers['pinky1']) gsap.to(bones.r_fingers['pinky1'].rotation, {x: deg(90), y: 0, z: 0, duration: duration});
+        }
+
+        function customOpen(duration = 0.1) {
+            const targetBones = ['thumb1', 'index1', 'middle1', 'ring1', 'pinky1'];
+            targetBones.forEach(b => {
+                if(bones.l_fingers[b]) gsap.to(bones.l_fingers[b].rotation, {x: 0, y: 0, z: 0, duration: duration});
+                if(bones.r_fingers[b]) gsap.to(bones.r_fingers[b].rotation, {x: 0, y: 0, z: 0, duration: duration});
+            });
+        }
+
+        // --- ΠΑΛΙΑ naturalCurl (Για όσες λέξεις δεν έχουμε βρει ακόμα τα custom νούμερα) ---
         function naturalCurl(side, amount, skipIndex = false, duration = 0.5) {
             if (!currentModel) return;
             const boneMap = side === 'r' ? bones.r_fingers : bones.l_fingers;
             const dir = side === 'r' ? -1 : 1; 
-            
-            // Μετατροπή MCP, PIP, DIP σε array για looping
             const boneArray = Object.values(boneMap);
 
             boneArray.forEach(f => {
                 const name = f.name.toLowerCase();
                 if (skipIndex && name.includes('index')) return;
-                
                 let mult = 0.9; 
                 if (name.includes('2')) mult = 1.1; 
                 if (name.includes('3')) mult = 0.6; 
-                
                 gsap.to(f.rotation, { z: deg(amount * dir * mult), duration: duration, ease: "power2.out" });
             });
         }
 
         function resetPose(speed = 0.5) {
             if (!bones.r_shoulder) return;
-            // Απενεργοποίηση debug 'busy'
             is_busy = false; 
             const area = document.getElementById('export-area');
             if(area) area.style.display = 'none';
@@ -288,11 +296,10 @@
             gsap.to(bones.l_shoulder.rotation, { x: deg(basePose.x), y: deg(-basePose.y), z: deg(-basePose.z), duration: speed });
             [bones.r_elbow, bones.l_elbow, bones.r_wrist, bones.l_wrist].forEach(b => { if(b) gsap.to(b.rotation, { x: 0, y: 0, z: 0, duration: speed }); });
             
-            // Reset δακτύλων MCP,PIP,DIP (r_fingers/l_fingers είναι objects πλέον)
             Object.values(bones.r_fingers).concat(Object.values(bones.l_fingers)).forEach(f => gsap.to(f.rotation, { x:0, y:0, z:0, duration: speed }));
         }
 
-        // === ΚΙΝΗΣΕΙΣ ΩΣ ΕΧΟΥΝ (ΑΜΕΤΑΒΛΗΤΑ TRIGGERS) ===
+        // === ΚΙΝΗΣΕΙΣ ===
 
         function gesture_efcharisto() {
             is_busy = true;
@@ -304,9 +311,10 @@
                 gsap.to(bones.l_shoulder.rotation, { x: deg(52), y: deg(27), z: deg(24), duration: 0.5 });
                 gsap.to(bones.l_elbow.rotation, { x: deg(91), y: deg(24), z: deg(107), duration: 0.5 });
                 const pulse = gsap.timeline({ repeat: 2, onComplete: finalize_gesture });
-                pulse.to({}, { duration: 0.1, onStart: () => { naturalCurl('r', 75); naturalCurl('l', 75); } })
+                
+                pulse.to({}, { duration: 0.1, onStart: () => { customFist(0.1); } })
                      .to({}, { duration: 0.35 })
-                     .to({}, { duration: 0.1, onStart: () => { naturalCurl('r', 25); naturalCurl('l', 25); } })
+                     .to({}, { duration: 0.1, onStart: () => { customOpen(0.1); } })
                      .to({}, { duration: 0.35 });
             }, 600);
         }
@@ -318,9 +326,9 @@
             setTimeout(() => {
                 gsap.to(bones.r_wrist.rotation, { y: deg(-65), duration: 0.3 });
                 naturalCurl('r', 85, true); 
-                const indexBone = bones.r_fingers['index1']; // MCP
-                const indexBone2 = bones.r_fingers['index2']; // PIP
-                const indexBone3 = bones.r_fingers['index3']; // DIP
+                const indexBone = bones.r_fingers['index1']; 
+                const indexBone2 = bones.r_fingers['index2']; 
+                const indexBone3 = bones.r_fingers['index3']; 
                 const flickBones = [indexBone, indexBone2, indexBone3].filter(b=>b);
 
                 const flick = gsap.timeline({ repeat: 1, onComplete: finalize_gesture });
