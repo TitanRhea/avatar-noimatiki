@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Web Avatar - 3Final Fixed GSL Flow</title>
+    <title>Web Avatar - Final Fixed GSL Flow</title>
     <style>
         body { margin: 0; overflow: hidden; background-color: #f0e6dc; font-family: 'Segoe UI', sans-serif; }
         #canvas-container { width: 100vw; height: 100vh; display: block; }
@@ -24,12 +24,38 @@
         }
         button.listening { background-color: #f44336; }
         select { font-size: 16px; padding: 12px; border-radius: 10px; border: 1px solid #ddd; }
+
+        /* --- ΝΕΟ CSS ΓΙΑ ΤΟ ΕΡΓΑΛΕΙΟ ΔΟΚΙΜΗΣ --- */
+        #debug-panel {
+            position: absolute; top: 15px; left: 15px; background: rgba(255, 255, 255, 0.95);
+            padding: 20px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+            font-family: sans-serif; pointer-events: auto; width: 250px;
+        }
+        #debug-panel h3 { margin-top: 0; font-size: 16px; color: #333; text-align: center; }
+        #debug-panel label { font-size: 14px; font-weight: bold; color: #555; }
+        #debug-panel input { width: 100%; margin-bottom: 15px; }
+        .reset-btn { width: 100%; background: #2196F3; font-size: 14px; padding: 10px; }
     </style>
 </head>
 <body>
 
     <div id="canvas-container"></div>
     
+    <!-- --- ΝΕΟ ΕΡΓΑΛΕΙΟ ΔΟΚΙΜΗΣ ΣΤΟ HTML --- -->
+    <div id="debug-panel">
+        <h3>🛠️ Τεστ Δακτύλων (Δεξί)</h3>
+        <label>Άξονας X: <span id="valX">0</span>°</label><br>
+        <input type="range" id="sliderX" min="-180" max="180" value="0" oninput="updateDebug()">
+        
+        <label>Άξονας Y: <span id="valY">0</span>°</label><br>
+        <input type="range" id="sliderY" min="-180" max="180" value="0" oninput="updateDebug()">
+        
+        <label>Άξονας Z: <span id="valZ">0</span>°</label><br>
+        <input type="range" id="sliderZ" min="-180" max="180" value="0" oninput="updateDebug()">
+        
+        <button class="reset-btn" onclick="resetDebug()">🔄 Μηδενισμός</button>
+    </div>
+
     <div id="ui-layer">
         <div id="subtitle">Μικρόφωνο Κλειστό</div><br>
         <div class="controls">
@@ -95,25 +121,45 @@
             });
         }
 
-        // --- ΔΙΟΡΘΩΜΕΝΗ naturalCurl: ΚΛΕΙΝΕΙ ΠΡΟΣ ΤΑ ΜΕΣΑ (ΣΦΙΧΤΗ ΓΡΟΘΙΑ) ---
+        // --- ΝΕΕΣ ΣΥΝΑΡΤΗΣΕΙΣ ΓΙΑ ΤΟ ΕΡΓΑΛΕΙΟ ΔΟΚΙΜΗΣ ---
+        function updateDebug() {
+            const x = document.getElementById('sliderX').value;
+            const y = document.getElementById('sliderY').value;
+            const z = document.getElementById('sliderZ').value;
+            
+            document.getElementById('valX').innerText = x;
+            document.getElementById('valY').innerText = y;
+            document.getElementById('valZ').innerText = z;
+
+            // Εφαρμόζουμε ζωντανά τις τιμές στα 4 δάχτυλα του ΔΕΞΙΟΥ χεριού
+            bones.r_fingers.forEach(f => {
+                if(!f.name.toLowerCase().includes('thumb')) { // Αφήνουμε τον αντίχειρα εκτός για να βλέπουμε καθαρά
+                    f.rotation.x = deg(x);
+                    f.rotation.y = deg(y);
+                    f.rotation.z = deg(z);
+                }
+            });
+        }
+
+        function resetDebug() {
+            document.getElementById('sliderX').value = 0;
+            document.getElementById('sliderY').value = 0;
+            document.getElementById('sliderZ').value = 0;
+            updateDebug();
+        }
+
+        // --- ΚΛΕΙΔΩΜΕΝΗ naturalCurl ΑΠΟ ΤΟ ΠΡΟΗΓΟΥΜΕΝΟ ΣΟΥ ΑΡΧΕΙΟ ---
         function naturalCurl(side, amount, skipIndex = false, duration = 0.5) {
             const list = side === 'r' ? bones.r_fingers : bones.l_fingers;
-            // Αντιστροφή προσήμου για κάμψη προς την παλάμη (Mixamo standard)
             const dir = side === 'r' ? -1 : 1; 
             
             list.forEach(f => {
                 const name = f.name.toLowerCase();
                 if (skipIndex && name.includes('index')) return;
                 
-                // Δραστική αύξηση πολλαπλασιαστών (multipliers) για σφιχτό κλείσιμο
-                let mult = 1.1; // Βάση (MCP) - Λυγίζει λίγο παραπάνω
-                if (name.includes('2')) mult = 1.6; // Μέση (PIP) - Βαθύ δίπλωμα
-                if (name.includes('3')) mult = 1.5; // Άκρη (DIP) - Κλείνει ακουμπώντας την παλάμη
-                
-                // Ελαφριά μείωση στη βάση του αντίχειρα για να μην τρυπάει την παλάμη
-                if (name.includes('thumb') && !name.includes('2') && !name.includes('3')) {
-                    mult = 0.7;
-                }
+                let mult = 0.9; 
+                if (name.includes('2')) mult = 1.1; 
+                if (name.includes('3')) mult = 0.6; 
                 
                 gsap.to(f.rotation, { z: deg(amount * dir * mult), duration: duration, ease: "power2.out" });
             });
@@ -125,11 +171,10 @@
             gsap.to(bones.l_shoulder.rotation, { x: deg(basePose.x), y: deg(-basePose.y), z: deg(-basePose.z), duration: speed });
             [bones.r_elbow, bones.l_elbow, bones.r_wrist, bones.l_wrist].forEach(b => { if(b) gsap.to(b.rotation, { x: 0, y: 0, z: 0, duration: speed }); });
             bones.r_fingers.concat(bones.l_fingers).forEach(f => gsap.to(f.rotation, { x:0, y:0, z:0, duration: speed }));
-            // Απελευθέρωση busy
             setTimeout(() => { is_busy = false; }, speed * 1000 + 100);
         }
 
-        // --- ΚΙΝΗΣΕΙΣ ---
+        // --- ΚΙΝΗΣΕΙΣ (ΚΛΕΙΔΩΜΕΝΕΣ ΩΣ ΕΧΟΥΝ) ---
 
         function gesture_efcharisto() {
             is_busy = true;
@@ -141,7 +186,6 @@
                 gsap.to(bones.l_shoulder.rotation, { x: deg(52), y: deg(27), z: deg(24), duration: 0.5 });
                 gsap.to(bones.l_elbow.rotation, { x: deg(91), y: deg(24), z: deg(107), duration: 0.5 });
                 const pulse = gsap.timeline({ repeat: 2, onComplete: finalize_gesture });
-                // Εδώ διορθώθηκε το κλείσιμο
                 pulse.to({}, { duration: 0.1, onStart: () => { naturalCurl('r', 75); naturalCurl('l', 75); } })
                      .to({}, { duration: 0.35 })
                      .to({}, { duration: 0.1, onStart: () => { naturalCurl('r', 25); naturalCurl('l', 25); } })
@@ -158,7 +202,6 @@
                 naturalCurl('r', 85, true); 
                 const index = bones.r_fingers.filter(f => f.name.toLowerCase().includes('index'));
                 const flick = gsap.timeline({ repeat: 1, onComplete: finalize_gesture });
-                // Διόρθωση προσήμου δείκτη
                 flick.to(index.map(b=>b.rotation), { z: deg(-60), duration: 0.15, ease: "power1.inOut" })
                      .to(index.map(b=>b.rotation), { z: deg(-10), duration: 0.15, ease: "power1.inOut" });
             }, 600);
@@ -250,7 +293,6 @@
                 else if (text.includes("γεια") || text.includes("χαίρετε")) { 
                     last_trigger_time = now; gesture_geia(); 
                 }
-                // ΔΙΟΡΘΩΜΕΝΗ ΓΡΑΜΜΗ (Syntax Fixed)
                 else if (text.includes("όνομα") || text.includes("ποιο") || text.includes("ειναι") || text.includes("όνομά") || text.includes("σου")) { 
                     last_trigger_time = now; gesture_onoma(); 
                 }
