@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Web Avatar - Final Integrated Version</title>
+    <title>Web Avatar - Professional Lip Sync & Auto-Clean</title>
     <style>
         body { margin: 0; overflow: hidden; background-color: #f0e6dc; font-family: 'Segoe UI', sans-serif; }
         #canvas-container { width: 100vw; height: 100vh; display: block; }
@@ -15,7 +15,7 @@
             font-size: 20px; color: #333; background: rgba(255, 255, 255, 0.95);
             padding: 12px 25px; border-radius: 20px; display: inline-block; 
             margin-bottom: 15px; font-weight: bold; box-shadow: 0 4px 15px rgba(0,0,0,0.1);
-            min-width: 400px;
+            min-width: 420px;
         }
         .controls { pointer-events: auto; }
         button { 
@@ -31,46 +31,51 @@
     <div id="canvas-container"></div>
     
     <div id="ui-layer">
-        <div id="subtitle">Αναμονή...</div><br>
+        <div id="subtitle">Αναμονή φόρτωσης...</div><br>
         <div class="controls">
             <select id="avatar-select" onchange="loadAvatar(this.value)">
                 <option value="Rhea1.glb">Avatar: Rhea (Νέο Μοντέλο)</option>
                 <option value="titan.glb">Avatar: Titan (mixamorig9)</option>
             </select>
-            <button id="mic-btn">🎙️ Ενεργοποίηση</button>
+            <button id="mic-btn">🎙️ Ενεργοποίηση Μικροφώνου</button>
         </div>
     </div>
 
+    <!-- Βιβλιοθήκες -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/GLTFLoader.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/gsap.min.js"></script>
 
     <script>
+        // === ΡΥΘΜΙΣΗ ΣΚΗΝΗΣ ===
         const scene = new THREE.Scene();
         scene.background = new THREE.Color(0xf0e6dc);
         const camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 100);
         camera.position.set(0, 1.8, 4.5); 
+
         const renderer = new THREE.WebGLRenderer({ antialias: true });
         renderer.setSize(window.innerWidth, window.innerHeight);
         renderer.outputEncoding = THREE.sRGBEncoding;
         document.getElementById('canvas-container').appendChild(renderer.domElement);
+
         const controls = new THREE.OrbitControls(camera, renderer.domElement);
-        controls.target.set(0, 1.5, 0); 
+        controls.target.set(0, 1.4, 0); 
         controls.update();
 
-        scene.add(new THREE.AmbientLight(0xffffff, 0.8));
-        const light = new THREE.DirectionalLight(0xffffff, 0.6);
+        scene.add(new THREE.AmbientLight(0xffffff, 0.9));
+        const light = new THREE.DirectionalLight(0xffffff, 0.7);
         light.position.set(5, 10, 5);
         scene.add(light);
 
+        // === ΜΕΤΑΒΛΗΤΕΣ ===
         let currentModel = null, bones = {}, is_busy = false;
         const deg = (d) => d * (Math.PI / 180);
         const basePose = { x: 54, y: 30, z: 17 };
         const VOWEL_OPEN = { 'α': 115, 'ε': 105, 'η': 105, 'ι': 100, 'ο': 110, 'υ': 100, 'ω': 110 };
-
         let gestureQueue = [];
 
+        // === LIP SYNC ΛΟΓΙΚΗ ===
         function speakWord(word, total_time = 1.5) {
             if (!bones.jaw) return;
             const vowels = [...word.toLowerCase()].filter(c => VOWEL_OPEN[c]);
@@ -83,6 +88,7 @@
             });
         }
 
+        // === ΦΟΡΤΩΣΗ ΚΑΙ ΚΑΘΑΡΙΣΜΟΣ ΜΟΝΤΕΛΟΥ ===
         function loadAvatar(file) {
             document.getElementById('subtitle').innerText = "Φόρτωση: " + file;
             if (currentModel) scene.remove(currentModel);
@@ -90,12 +96,19 @@
             
             new THREE.GLTFLoader().load(file, (gltf) => {
                 currentModel = gltf.scene;
-                currentModel.position.set(0, 0.6, 0); 
-                currentModel.scale.set(1.1, 1.1, 1.1); 
-                scene.add(currentModel);
 
+                // 1. Αφαίρεση του λευκού κύβου και κεντράρισμα
                 currentModel.traverse(n => {
-                    if (n.isMesh && n.name.toLowerCase().includes('cube')) n.visible = false;
+                    // Αν είναι Mesh και είναι πολύ μεγάλο (ο κύβος), το κρύβουμε
+                    if (n.isMesh) {
+                        const meshBox = new THREE.Box3().setFromObject(n);
+                        const meshSize = meshBox.getSize(new THREE.Vector3());
+                        if (meshSize.x > 2 || n.name.toLowerCase().includes('cube')) {
+                            n.visible = false; 
+                        }
+                    }
+
+                    // 2. Εύρεση Bones (Universal Mapping)
                     if (n.isBone) {
                         const bl = n.name.toLowerCase();
                         if (bl.includes('jaw')) bones.jaw = n;
@@ -110,14 +123,21 @@
                         }
                     }
                 });
+
+                // Αυτόματη τοποθέτηση στο σωστό ύψος
+                currentModel.position.set(0, 0.4, 0); 
+                currentModel.scale.set(1.1, 1.1, 1.1);
+                scene.add(currentModel);
+
                 if (bones.jaw) bones.jaw.rotation.x = deg(90);
                 resetPose(0.1);
-                document.getElementById('subtitle').innerText = "Έτοιμο!";
+                document.getElementById('subtitle').innerText = "Έτοιμο! Ο κύβος αφαιρέθηκε.";
             }, undefined, (err) => {
-                document.getElementById('subtitle').innerText = "ΣΦΑΛΜΑ: Το αρχείο δεν βρέθηκε!";
+                document.getElementById('subtitle').innerText = "ΣΦΑΛΜΑ: Το αρχείο " + file + " δεν βρέθηκε!";
             });
         }
 
+        // === ΚΙΝΗΣΕΙΣ ΚΑΙ ΟΥΡΑ ===
         function resetPose(speed = 0.5) {
             if (!bones.r_shoulder) return;
             gsap.to(bones.r_shoulder.rotation, { x: deg(basePose.x), y: deg(basePose.y), z: deg(basePose.z), duration: speed });
@@ -142,16 +162,12 @@
         }
 
         // === GESTURES - CALIBRATION MODE ===
-
         function gesture_onoma() {
             is_busy = true;
             speakWord("Όνομα", 1.2);
-            // ΡΥΘΜΙΣΗ ΩΜΟΣ/ΑΓΚΩΝΑΣ/ΚΑΡΠΟΣ
             gsap.to(bones.r_shoulder.rotation, { x: deg(0), y: deg(0), z: deg(0), duration: 0.5 });
             gsap.to(bones.r_elbow.rotation, { x: deg(0), y: deg(0), z: deg(0), duration: 0.5 });
             gsap.to(bones.r_wrist.rotation, { x: deg(0), y: deg(0), z: deg(0), duration: 0.5 });
-
-            // ΟΛΑ ΤΑ ΔΑΧΤΥΛΑ ΑΝΟΙΧΤΑ ΓΙΑ ΜΕΤΡΗΣΕΙΣ
             const fingers = ['thumb', 'index', 'middle', 'ring', 'pinky'];
             fingers.forEach(f => {
                 [1,2,3].forEach(num => {
@@ -167,7 +183,7 @@
             gsap.to(bones.r_shoulder.rotation, { x: deg(70), y: deg(14), z: deg(-17), duration: 0.5 });
             gsap.to(bones.r_elbow.rotation, { x: deg(108), y: deg(-31), z: deg(-69), duration: 0.5 });
             setTimeout(() => {
-                gsap.to(bones.r_wrist.rotation, { x: deg(0), duration: 0.4 }); // Ρύθμισε παλάμη
+                gsap.to(bones.r_wrist.rotation, { x: deg(0), duration: 0.4 }); 
                 setTimeout(finalize_gesture, 1500);
             }, 600);
         }
@@ -177,7 +193,7 @@
             speakWord("Μεσημέρι", 1.5);
             gsap.to(bones.r_shoulder.rotation, { x: deg(70), y: deg(14), z: deg(-17), duration: 0.5 });
             setTimeout(() => {
-                gsap.to(bones.r_shoulder.rotation, { x: deg(0), duration: 0.5 }); // Ρύθμισε ύψος
+                gsap.to(bones.r_shoulder.rotation, { x: deg(0), duration: 0.5 }); 
                 gsap.to(bones.r_elbow.rotation, { x: deg(0), duration: 0.5 });
                 setTimeout(finalize_gesture, 1500);
             }, 600);
@@ -197,7 +213,7 @@
             setTimeout(finalize_gesture, 1000);
         }
 
-        // Voice
+        // === ΦΩΝΗΤΙΚΟ ΣΥΣΤΗΜΑ ===
         const micBtn = document.getElementById('mic-btn');
         const subtitle = document.getElementById('subtitle');
         let recognition = null, isListening = false;
@@ -223,9 +239,17 @@
             else { recognition.stop(); isListening = false; micBtn.classList.remove('listening'); }
         };
 
+        // Αρχική εκκίνηση
         loadAvatar('Rhea1.glb');
         function animate() { requestAnimationFrame(animate); renderer.render(scene, camera); }
         animate();
+
+        // Responsive window
+        window.addEventListener('resize', () => {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        });
     </script>
 </body>
 </html>
