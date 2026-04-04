@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Avatar System v6 - Calibration Mode</title>
+    <title>Avatar System v7 - Advanced Calibration</title>
     <style>
         body { margin: 0; overflow: hidden; background-color: #f0e6dc; font-family: 'Segoe UI', sans-serif; }
         #canvas-container { width: 100vw; height: 100vh; display: block; }
@@ -41,7 +41,6 @@
         </div>
     </div>
 
-    <!-- Libraries -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/GLTFLoader.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/DRACOLoader.js"></script>
@@ -144,18 +143,20 @@
             is_busy = true;
             speakWord("Όνομα", 1.2);
 
-            // 1. Ρύθμιση Ώμου/Αγκώνα (Δοκίμασε αριθμούς εδώ)
-            gsap.to(bones.r_shoulder.rotation, { x: deg(20), y: deg(-10), z: deg(0), duration: 0.6 });
-            gsap.to(bones.r_elbow.rotation, { x: deg(-30), duration: 0.6 });
+            // 1. Διόρθωση Ώμου/Αγκώνα
+            // Αυτό θα σε φέρει σε μια "Calibration Pose". Δοκίμασε αριθμούς εδώ:
+            gsap.to(bones.r_shoulder.rotation, { x: deg(10), y: deg(-15), z: deg(0), duration: 0.6 });
+            if(bones.r_elbow) gsap.to(bones.r_elbow.rotation, { x: deg(-25), duration: 0.6 });
 
             // 2. Ρύθμιση Δαχτύλων (Calibration)
             // Παράδειγμα: deg(45) λυγίζει το δάχτυλο. deg(0) είναι ίσιο.
+            // ΑΛΛΑΞΕ ΤΟ 0 ΜΕ ΑΛΛΟΝ ΑΡΙΘΜΟ (π.χ. 45) ΓΙΑ ΝΑ ΔΕΙΣ ΤΟ ΛΥΓΙΣΜΑ
             const fingers = ['thumb', 'index', 'middle', 'ring', 'pinky'];
             fingers.forEach(f => {
                 [1,2,3].forEach(num => {
                     if(bones.r_joints[f+num]) {
                         gsap.to(bones.r_joints[f+num].rotation, { 
-                            x: deg(0), // ΑΛΛΑΞΕ ΤΟ 0 ΜΕ ΑΛΛΟΝ ΑΡΙΘΜΟ ΓΙΑ ΝΑ ΔΕΙΣ ΤΟ ΛΥΓΙΣΜΑ
+                            x: deg(0), // <- ΑΛΛΑΞΕ ΑΥΤΟΝ ΤΟΝ ΑΡΙΘΜΟ
                             duration: 0.6 
                         });
                     }
