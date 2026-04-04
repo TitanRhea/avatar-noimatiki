@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Avatar System - Test Mode</title>
+    <title>Avatar System - Original Rhea File</title>
     <style>
         body { margin: 0; overflow: hidden; background-color: #f0e6dc; font-family: 'Segoe UI', sans-serif; }
         #canvas-container { width: 100vw; height: 100vh; display: block; }
@@ -30,7 +30,7 @@
     <div id="canvas-container"></div>
     
     <div id="ui-layer">
-        <div id="subtitle">Αναμονή για test.glb...</div><br>
+        <div id="subtitle">Φόρτωση rhea.glb...</div><br>
         <div class="controls">
             <button id="mic-btn">🎙️ Ενεργοποίηση Μικροφώνου</button>
         </div>
@@ -65,30 +65,24 @@
         const deg = (d) => d * (Math.PI / 180);
         const basePose = { x: 54, y: 30, z: 17 };
         const VOWEL_OPEN = { 'α': 115, 'ε': 105, 'η': 105, 'ι': 100, 'ο': 110, 'υ': 100, 'ω': 110 };
-        let gestureQueue = [];
 
         function loadAvatar(file) {
-            const finalPath = file + "?v=" + Date.now();
-            document.getElementById('subtitle').innerText = "Φόρτωση: " + file;
-            
             if (currentModel) scene.remove(currentModel);
             bones = { r_joints: {}, r_fingers: [] };
             
-            new THREE.GLTFLoader().load(finalPath, (gltf) => {
+            new THREE.GLTFLoader().load(file, (gltf) => {
                 currentModel = gltf.scene;
                 currentModel.traverse(n => {
-                    if (n.isMesh) {
-                        const meshSize = new THREE.Box3().setFromObject(n).getSize(new THREE.Vector3());
-                        if (meshSize.x > 2 || n.name.toLowerCase().includes('cube') || n.name.toLowerCase().includes('sphere')) {
-                            n.visible = false; 
-                        }
-                    }
                     if (n.isBone) {
                         const bl = n.name.toLowerCase();
-                        if (bl.includes('jaw')) bones.jaw = n;
+                        if (bl.includes('jaw')) {
+                            bones.jaw = n;
+                            console.log("SUCCESS: Jaw bone found in rhea.glb!");
+                        }
                         if (bl.endsWith('rightarm') || bl.includes('rightarm')) bones.r_shoulder = n;
                         if (bl.endsWith('rightforearm') || bl.includes('rightforearm')) bones.r_elbow = n;
                         if (bl.endsWith('righthand') || bl.includes('righthand')) bones.r_wrist = n;
+                        
                         const match = bl.match(/(thumb|index|middle|ring|pinky)(\d)/);
                         if (bl.includes('righthand') && match) {
                             bones.r_joints[match[0]] = n;
@@ -96,17 +90,18 @@
                         }
                     }
                 });
-                currentModel.position.set(0, 0, 0); 
+                currentModel.position.set(0, 0, 0);
                 currentModel.scale.set(1.1, 1.1, 1.1);
                 scene.add(currentModel);
-                setTimeout(() => { resetPose(0.1); if (bones.jaw) bones.jaw.rotation.x = deg(90); }, 200);
-                document.getElementById('subtitle').innerText = "Το test.glb φορτώθηκε!";
-            }, 
-            (xhr) => {
-                const p = Math.round((xhr.loaded / xhr.total) * 100);
-                if (p) document.getElementById('subtitle').innerText = "Λήψη: " + p + "%";
-            },
-            (err) => { document.getElementById('subtitle').innerText = "Σφάλμα φόρτωσης test.glb"; });
+                
+                setTimeout(() => { 
+                    resetPose(0.1); 
+                    if (bones.jaw) bones.jaw.rotation.x = deg(90);
+                    else document.getElementById('subtitle').innerText = "Το rhea.glb δεν έχει Jaw bone.";
+                }, 200);
+                
+                document.getElementById('subtitle').innerText = "Το rhea.glb φορτώθηκε!";
+            });
         }
 
         function resetPose(speed = 0.5) {
@@ -128,15 +123,6 @@
             });
         }
 
-        function gesture_onoma() {
-            is_busy = true; speakWord("Όνομα", 1.2);
-            gsap.to(bones.r_shoulder.rotation, { x: 0, y: 0, z: 0, duration: 0.5 });
-            gsap.to(bones.r_elbow.rotation, { x: 0, y: 0, z: 0, duration: 0.5 });
-            const fingers = ['thumb', 'index', 'middle', 'ring', 'pinky'];
-            fingers.forEach(f => { [1,2,3].forEach(num => { if(bones.r_joints[f+num]) gsap.to(bones.r_joints[f+num].rotation, { x: 0, duration: 0.5 }); }); });
-            setTimeout(() => { resetPose(); is_busy = false; }, 3000);
-        }
-
         const micBtn = document.getElementById('mic-btn');
         if ('webkitSpeechRecognition' in window) {
             const recognition = new webkitSpeechRecognition();
@@ -145,13 +131,14 @@
             recognition.onresult = (event) => {
                 const text = event.results[event.results.length-1][0].transcript.toLowerCase().trim();
                 document.getElementById('subtitle').innerText = "Είπες: " + text;
-                if (text.includes("όνομα")) gesture_onoma();
-                else speakWord(text);
+                speakWord(text);
             };
             micBtn.onclick = () => { recognition.start(); micBtn.classList.add('listening'); };
         }
 
-        loadAvatar('test.glb');
+        // Φορτώνουμε το παλιό αρχείο rhea.glb
+        loadAvatar('rhea.glb');
+
         function animate() { requestAnimationFrame(animate); renderer.render(scene, camera); }
         animate();
     </script>
