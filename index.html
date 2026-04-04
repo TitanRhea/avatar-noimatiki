@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Rhea Final - Old Gestures + New Engine</title>
+    <title>Rhea Final - Bone Fix & Restored Gestures</title>
     <style>
         body { margin: 0; overflow: hidden; background-color: #f0e6dc; font-family: sans-serif; }
         #canvas-container { width: 100vw; height: 100vh; display: block; }
@@ -71,7 +71,6 @@
         let currentModel = null, bones = {}, is_busy = false;
         const deg = (d) => d * (Math.PI / 180);
         
-        // H Διορθωμένη Α-Pose για να πέφτουν τα χέρια κάτω
         const basePose = { x: 65, y: -15, z: 10 }; 
         const VOWEL_OPEN = { 'α': 115, 'ε': 105, 'η': 105, 'ι': 100, 'ο': 110, 'υ': 100, 'ω': 110 };
         
@@ -111,29 +110,28 @@
                         if (box.getSize(new THREE.Vector3()).x > 1.5 || n.name.toLowerCase().includes('cube')) n.visible = false; 
                     }
                     if (n.isBone) {
-                        const bl = n.name.toLowerCase();
-                        if (bl.includes('jaw')) bones.jaw = n;
+                        const b = n.name.toLowerCase();
                         
-                        // ΔΕΞΙ ΧΕΡΙ
-                        if (bl.includes('rightarm') || bl.includes('arm.r') || bl.includes('arm_r') || bl.includes('r_upperarm')) bones.r_shoulder = n;
-                        if (bl.includes('rightforearm') || bl.includes('forearm.r') || bl.includes('forearm_r') || bl.includes('r_lowerarm')) bones.r_elbow = n;
-                        if (bl.includes('righthand') || bl.includes('hand.r') || bl.includes('hand_r') || bl.includes('r_hand')) bones.r_wrist = n;
+                        // Jaw για lip sync
+                        if (b.includes('jaw')) bones.jaw = n;
+                        
+                        // ΑΚΡΙΒΗΣ ΑΝΑΓΝΩΡΙΣΗ BONES (Οπως στον παλιό κώδικα)
+                        if (b.endsWith('rightarm')) bones.r_shoulder = n;
+                        if (b.endsWith('leftarm')) bones.l_shoulder = n;
+                        if (b.endsWith('rightforearm')) bones.r_elbow = n;
+                        if (b.endsWith('leftforearm')) bones.l_elbow = n;
+                        if (b.endsWith('righthand')) bones.r_wrist = n;
+                        if (b.endsWith('lefthand')) bones.l_wrist = n;
 
-                        // ΑΡΙΣΤΕΡΟ ΧΕΡΙ
-                        if (bl.includes('leftarm') || bl.includes('arm.l') || bl.includes('arm_l') || bl.includes('l_upperarm')) bones.l_shoulder = n;
-                        if (bl.includes('leftforearm') || bl.includes('forearm.l') || bl.includes('forearm_l') || bl.includes('l_lowerarm')) bones.l_elbow = n;
-                        if (bl.includes('lefthand') || bl.includes('hand.l') || bl.includes('hand_l') || bl.includes('l_hand')) bones.l_wrist = n;
-
-                        const match = bl.match(/(thumb|index|middle|ring|pinky)(\d)/);
-                        if (match) {
-                            if (bl.includes('right') || bl.includes('.r') || bl.includes('_r')) {
-                                bones.r_joints[match[0]] = n;
-                                bones.r_fingers.push(n);
-                            }
-                            if (bl.includes('left') || bl.includes('.l') || bl.includes('_l')) {
-                                bones.l_joints[match[0]] = n;
-                                bones.l_fingers.push(n);
-                            }
+                        if (b.includes('righthand') && !b.endsWith('righthand')) {
+                            bones.r_fingers.push(n);
+                            const match = b.match(/(thumb|index|middle|ring|pinky)(\d)/);
+                            if (match) bones.r_joints[match[0]] = n;
+                        }
+                        if (b.includes('lefthand') && !b.endsWith('lefthand')) {
+                            bones.l_fingers.push(n);
+                            const match = b.match(/(thumb|index|middle|ring|pinky)(\d)/);
+                            if (match) bones.l_joints[match[0]] = n;
                         }
                     }
                 });
@@ -182,7 +180,7 @@
             else if (nextGesture === 'onoma') gesture_onoma();
         }
 
-        // --- CUSTOM POSITIONS (ΑΠΟ ΤΟΝ ΠΑΛΙΟ ΚΩΔΙΚΑ) ---
+        // --- CUSTOM POSITIONS ---
         function customFist(duration = 0.1) {
             if (!currentModel) return;
             if(bones.l_joints['thumb1']) gsap.to(bones.l_joints['thumb1'].rotation, {x: deg(14), y: deg(-14), z: deg(-27), duration: duration});
@@ -216,7 +214,7 @@
             if(j['index3']) gsap.to(j['index3'].rotation, {x: 0, y: 0, z: 0, duration: duration});
         }
 
-        // --- GESTURES (ΜΕΓΑΛΕΣ ΚΙΝΗΣΕΙΣ + LIP SYNC) ---
+        // --- GESTURES (ΑΠΟΛΥΤΩΣ ΟΙ ΙΔΙΕΣ ΜΕ ΠΡΙΝ) ---
 
         function gesture_efcharisto() {
             is_busy = true; speakWord("Ευχαριστώ", 1.8);
@@ -329,7 +327,7 @@
             }, 600);
         }
 
-        // --- ΦΩΝΗΤΙΚΟΣ ΕΛΕΓΧΟΣ (FIX ΓΙΑ ΚΙΝΗΤΑ) ---
+        // --- ΦΩΝΗΤΙΚΟΣ ΕΛΕΓΧΟΣ ---
         const micBtn = document.getElementById('mic-btn');
         const subtitle = document.getElementById('subtitle');
         let recognition = null;
@@ -378,7 +376,7 @@
                         enqueueGesture(bestMatch);
                     }
                 } else {
-                    speakWord(text); // Απλή ομιλία αν δεν βρει κίνηση
+                    speakWord(text);
                 }
             };
             
