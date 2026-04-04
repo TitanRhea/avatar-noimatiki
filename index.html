@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Rhea Final - True A-Pose Fix</title>
+    <title>Rhea Final - A-Pose & Mic Fix</title>
     <style>
         body { margin: 0; overflow: hidden; background-color: #f0e6dc; font-family: sans-serif; }
         #canvas-container { width: 100vw; height: 100vh; display: block; }
@@ -71,8 +71,8 @@
         let currentModel = null, bones = {}, is_busy = false;
         const deg = (d) => d * (Math.PI / 180);
         
-        // === ΚΛΕΙΔΩΜΕΝΗ Α-POSE ΑΠΟ ΤΗ ΜΝΗΜΗ ===
-        const basePose = { x: 74, y: 12, z: 12 }; 
+        // === ΝΕΑ ΔΙΟΡΘΩΜΕΝΗ Α-POSE (Χέρια ίσια κάτω, όχι πίσω) ===
+        const basePose = { x: 65, y: 0, z: 0 }; 
         const VOWEL_OPEN = { 'α': 115, 'ε': 105, 'η': 105, 'ι': 100, 'ο': 110, 'υ': 100, 'ω': 110 };
         let gestureQueue = [];
 
@@ -100,12 +100,12 @@
                         const bl = n.name.toLowerCase();
                         if (bl.includes('jaw')) bones.jaw = n;
                         
-                        // ΑΝΙΧΝΕΥΣΗ ΔΕΞΙΟΥ ΧΕΡΙΟΥ (Πιο διευρυμένο για να το πιάνει σίγουρα)
+                        // ΔΕΞΙ ΧΕΡΙ
                         if (bl.includes('rightarm') || bl.includes('arm.r') || bl.includes('arm_r') || bl.includes('r_upperarm')) bones.r_shoulder = n;
                         if (bl.includes('rightforearm') || bl.includes('forearm.r') || bl.includes('forearm_r') || bl.includes('r_lowerarm')) bones.r_elbow = n;
                         if (bl.includes('righthand') || bl.includes('hand.r') || bl.includes('hand_r') || bl.includes('r_hand')) bones.r_wrist = n;
 
-                        // ΑΝΙΧΝΕΥΣΗ ΑΡΙΣΤΕΡΟΥ ΧΕΡΙΟΥ (Για να κατεβαίνει στην A-Pose)
+                        // ΑΡΙΣΤΕΡΟ ΧΕΡΙ
                         if (bl.includes('leftarm') || bl.includes('arm.l') || bl.includes('arm_l') || bl.includes('l_upperarm')) bones.l_shoulder = n;
                         if (bl.includes('leftforearm') || bl.includes('forearm.l') || bl.includes('forearm_l') || bl.includes('l_lowerarm')) bones.l_elbow = n;
                         if (bl.includes('lefthand') || bl.includes('hand.l') || bl.includes('hand_l') || bl.includes('l_hand')) bones.l_wrist = n;
@@ -125,19 +125,25 @@
                 setTimeout(() => {
                     resetPose(0.1); 
                     if (bones.jaw) bones.jaw.rotation.x = deg(90);
-                    document.getElementById('subtitle').innerText = "Rhea Έτοιμη!";
+                    
+                    // Επιβεβαίωση στην οθόνη ότι βρέθηκαν τα κόκκαλα για να νοηματίσει
+                    if(bones.r_shoulder) {
+                        document.getElementById('subtitle').innerText = "Rhea: Έτοιμη!";
+                    } else {
+                        document.getElementById('subtitle').innerText = "Rhea: Φόρτωσε, αλλά λείπει το δεξί χέρι.";
+                    }
                 }, 300);
             });
         }
 
         function resetPose(speed = 0.5) {
-            // Δεξί Χέρι - Επαναφορά στην Α-Pose
+            // Δεξί Χέρι
             if (bones.r_shoulder) gsap.to(bones.r_shoulder.rotation, { x: deg(basePose.x), y: deg(basePose.y), z: deg(basePose.z), duration: speed });
             if (bones.r_elbow) gsap.to(bones.r_elbow.rotation, { x: 0, y: 0, z: 0, duration: speed });
             if (bones.r_wrist) gsap.to(bones.r_wrist.rotation, { x: 0, y: 0, z: 0, duration: speed });
             bones.r_fingers.forEach(f => gsap.to(f.rotation, { x:0, y:0, z:0, duration: speed }));
 
-            // Αριστερό Χέρι - Μόνιμα κάτω στην A-Pose (Συμμετρικό)
+            // Αριστερό Χέρι
             if (bones.l_shoulder) gsap.to(bones.l_shoulder.rotation, { x: deg(basePose.x), y: deg(-basePose.y), z: deg(-basePose.z), duration: speed });
             if (bones.l_elbow) gsap.to(bones.l_elbow.rotation, { x: 0, y: 0, z: 0, duration: speed });
             if (bones.l_wrist) gsap.to(bones.l_wrist.rotation, { x: 0, y: 0, z: 0, duration: speed });
@@ -167,29 +173,30 @@
             else if (next === 'geia') gesture_geia();
         }
 
-        // === GESTURES: ΔΕΞΙ ΧΕΡΙ ΜΟΝΟ ===
+        // === GESTURES: ΕΝΤΟΝΕΣ ΚΙΝΗΣΕΙΣ ===
 
         function gesture_onoma() {
             is_busy = true; speakWord("Όνομα", 1.2);
-            gsap.to(bones.r_shoulder.rotation, { x: deg(20), y: deg(-10), duration: 0.5 });
-            gsap.to(bones.r_elbow.rotation, { x: deg(-35), duration: 0.5 });
+            if (bones.r_shoulder) gsap.to(bones.r_shoulder.rotation, { x: deg(0), y: deg(-30), z: deg(20), duration: 0.5 });
+            if (bones.r_elbow) gsap.to(bones.r_elbow.rotation, { x: deg(-80), duration: 0.5 });
             setTimeout(finalize_gesture, 3000);
         }
 
         function gesture_kalimera() {
             is_busy = true; speakWord("Καλημέρα", 1.5);
-            gsap.to(bones.r_shoulder.rotation, { x: deg(60), y: deg(10), duration: 0.6 });
-            gsap.to(bones.r_elbow.rotation, { x: deg(-20), duration: 0.6 });
+            if (bones.r_shoulder) gsap.to(bones.r_shoulder.rotation, { x: deg(40), y: deg(10), z: deg(-10), duration: 0.6 });
+            if (bones.r_elbow) gsap.to(bones.r_elbow.rotation, { x: deg(-30), duration: 0.6 });
             setTimeout(finalize_gesture, 2500);
         }
 
         function gesture_geia() {
             is_busy = true; speakWord("Γεια", 0.8);
-            gsap.to(bones.r_shoulder.rotation, { x: deg(15), y: deg(35), duration: 0.4 });
+            if (bones.r_shoulder) gsap.to(bones.r_shoulder.rotation, { x: deg(10), y: deg(30), z: deg(-20), duration: 0.4 });
+            if (bones.r_elbow) gsap.to(bones.r_elbow.rotation, { x: deg(-40), duration: 0.4 });
             setTimeout(finalize_gesture, 2000);
         }
 
-        // === VOICE RECOGNITION (TOGGLE) ===
+        // === VOICE RECOGNITION (MOBILE FIX) ===
         const micBtn = document.getElementById('mic-btn');
         const subtitle = document.getElementById('subtitle');
         let recognition = null, isListening = false;
@@ -198,21 +205,38 @@
             recognition = new webkitSpeechRecognition();
             recognition.lang = 'el-GR';
             recognition.continuous = true;
+            
             recognition.onresult = (event) => {
                 const text = event.results[event.results.length-1][0].transcript.toLowerCase().trim();
                 subtitle.innerText = "Είπες: " + text;
+                
                 if (text.includes("όνομα")) gestureQueue.push('onoma');
                 else if (text.includes("καλημέρα")) gestureQueue.push('kalimera');
                 else if (text.includes("γεια")) gestureQueue.push('geia');
+                else speakWord(text); // Για να κουνάει το στόμα σε άσχετες λέξεις
+                
                 processQueue();
             };
             
-            recognition.onerror = () => { recognition.stop(); isListening = false; micBtn.classList.remove('listening'); micBtn.innerText = "🎙️ Ενεργοποίηση"; };
-            recognition.onend = () => { if(isListening) recognition.start(); };
+            // Αγνοούμε το σφάλμα "no-speech" για να μην κλείνει συνέχεια το μικρόφωνο
+            recognition.onerror = (event) => { 
+                if (event.error !== 'no-speech') {
+                    isListening = false; 
+                    micBtn.classList.remove('listening'); 
+                    micBtn.innerText = "🎙️ Ενεργοποίηση"; 
+                }
+            };
+            
+            // Αυτόματη επανεκκίνηση αν σταματήσει κατά λάθος
+            recognition.onend = () => { 
+                if (isListening) {
+                    try { recognition.start(); } catch(e) {}
+                } 
+            };
 
             micBtn.onclick = () => {
                 if (!isListening) {
-                    recognition.start();
+                    try { recognition.start(); } catch(e) {}
                     isListening = true;
                     micBtn.classList.add('listening');
                     micBtn.innerText = "🛑 Απενεργοποίηση"; 
@@ -225,7 +249,10 @@
                     subtitle.innerText = "Μικρόφωνο κλειστό.";
                 }
             };
-        } else { micBtn.innerText = "Mic Not Supported"; micBtn.disabled = true; }
+        } else { 
+            micBtn.innerText = "Το μικρόφωνο δεν υποστηρίζεται."; 
+            micBtn.disabled = true; 
+        }
 
         loadAvatar('updated_model.glb');
         function animate() { requestAnimationFrame(animate); renderer.render(scene, camera); }
