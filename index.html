@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Rhea Final - Hand Fix & Mic Toggle</title>
+    <title>Rhea Final - True A-Pose Fix</title>
     <style>
         body { margin: 0; overflow: hidden; background-color: #f0e6dc; font-family: sans-serif; }
         #canvas-container { width: 100vw; height: 100vh; display: block; }
@@ -100,13 +100,18 @@
                         const bl = n.name.toLowerCase();
                         if (bl.includes('jaw')) bones.jaw = n;
                         
-                        // ΑΝΙΧΝΕΥΣΗ ΔΕΞΙΟΥ ΧΕΡΙΟΥ ΜΟΝΟ
-                        if (bl.includes('rightarm') || bl.includes('arm.r')) bones.r_shoulder = n;
-                        if (bl.includes('rightforearm') || bl.includes('forearm.r')) bones.r_elbow = n;
-                        if (bl.includes('righthand') || bl.includes('hand.r')) bones.r_wrist = n;
+                        // ΑΝΙΧΝΕΥΣΗ ΔΕΞΙΟΥ ΧΕΡΙΟΥ (Πιο διευρυμένο για να το πιάνει σίγουρα)
+                        if (bl.includes('rightarm') || bl.includes('arm.r') || bl.includes('arm_r') || bl.includes('r_upperarm')) bones.r_shoulder = n;
+                        if (bl.includes('rightforearm') || bl.includes('forearm.r') || bl.includes('forearm_r') || bl.includes('r_lowerarm')) bones.r_elbow = n;
+                        if (bl.includes('righthand') || bl.includes('hand.r') || bl.includes('hand_r') || bl.includes('r_hand')) bones.r_wrist = n;
+
+                        // ΑΝΙΧΝΕΥΣΗ ΑΡΙΣΤΕΡΟΥ ΧΕΡΙΟΥ (Για να κατεβαίνει στην A-Pose)
+                        if (bl.includes('leftarm') || bl.includes('arm.l') || bl.includes('arm_l') || bl.includes('l_upperarm')) bones.l_shoulder = n;
+                        if (bl.includes('leftforearm') || bl.includes('forearm.l') || bl.includes('forearm_l') || bl.includes('l_lowerarm')) bones.l_elbow = n;
+                        if (bl.includes('lefthand') || bl.includes('hand.l') || bl.includes('hand_l') || bl.includes('l_hand')) bones.l_wrist = n;
 
                         const match = bl.match(/(thumb|index|middle|ring|pinky)(\d)/);
-                        if ((bl.includes('right') || bl.includes('.r')) && match) {
+                        if ((bl.includes('right') || bl.includes('.r') || bl.includes('_r')) && match) {
                             bones.r_joints[match[0]] = n;
                             bones.r_fingers.push(n);
                         }
@@ -126,12 +131,16 @@
         }
 
         function resetPose(speed = 0.5) {
-            if (!bones.r_shoulder) return;
-            // Επιβολή της κλειδωμένης στάσης στον ώμο
-            gsap.to(bones.r_shoulder.rotation, { x: deg(basePose.x), y: deg(basePose.y), z: deg(basePose.z), duration: speed });
-            if(bones.r_elbow) gsap.to(bones.r_elbow.rotation, { x: 0, y: 0, z: 0, duration: speed });
-            if(bones.r_wrist) gsap.to(bones.r_wrist.rotation, { x: 0, y: 0, z: 0, duration: speed });
+            // Δεξί Χέρι - Επαναφορά στην Α-Pose
+            if (bones.r_shoulder) gsap.to(bones.r_shoulder.rotation, { x: deg(basePose.x), y: deg(basePose.y), z: deg(basePose.z), duration: speed });
+            if (bones.r_elbow) gsap.to(bones.r_elbow.rotation, { x: 0, y: 0, z: 0, duration: speed });
+            if (bones.r_wrist) gsap.to(bones.r_wrist.rotation, { x: 0, y: 0, z: 0, duration: speed });
             bones.r_fingers.forEach(f => gsap.to(f.rotation, { x:0, y:0, z:0, duration: speed }));
+
+            // Αριστερό Χέρι - Μόνιμα κάτω στην A-Pose (Συμμετρικό)
+            if (bones.l_shoulder) gsap.to(bones.l_shoulder.rotation, { x: deg(basePose.x), y: deg(-basePose.y), z: deg(-basePose.z), duration: speed });
+            if (bones.l_elbow) gsap.to(bones.l_elbow.rotation, { x: 0, y: 0, z: 0, duration: speed });
+            if (bones.l_wrist) gsap.to(bones.l_wrist.rotation, { x: 0, y: 0, z: 0, duration: speed });
         }
 
         function speakWord(word, total_time = 1.5) {
@@ -162,7 +171,6 @@
 
         function gesture_onoma() {
             is_busy = true; speakWord("Όνομα", 1.2);
-            // Κίνηση ώμου και αγκώνα για το "Όνομα"
             gsap.to(bones.r_shoulder.rotation, { x: deg(20), y: deg(-10), duration: 0.5 });
             gsap.to(bones.r_elbow.rotation, { x: deg(-35), duration: 0.5 });
             setTimeout(finalize_gesture, 3000);
@@ -170,7 +178,6 @@
 
         function gesture_kalimera() {
             is_busy = true; speakWord("Καλημέρα", 1.5);
-            // Κίνηση για το "Καλημέρα"
             gsap.to(bones.r_shoulder.rotation, { x: deg(60), y: deg(10), duration: 0.6 });
             gsap.to(bones.r_elbow.rotation, { x: deg(-20), duration: 0.6 });
             setTimeout(finalize_gesture, 2500);
@@ -178,7 +185,6 @@
 
         function gesture_geia() {
             is_busy = true; speakWord("Γεια", 0.8);
-            // Γρήγορη κίνηση για το "Γεια"
             gsap.to(bones.r_shoulder.rotation, { x: deg(15), y: deg(35), duration: 0.4 });
             setTimeout(finalize_gesture, 2000);
         }
@@ -202,14 +208,14 @@
             };
             
             recognition.onerror = () => { recognition.stop(); isListening = false; micBtn.classList.remove('listening'); micBtn.innerText = "🎙️ Ενεργοποίηση"; };
-            recognition.onend = () => { if(isListening) recognition.start(); }; // Auto-restart if intended
+            recognition.onend = () => { if(isListening) recognition.start(); };
 
             micBtn.onclick = () => {
                 if (!isListening) {
                     recognition.start();
                     isListening = true;
                     micBtn.classList.add('listening');
-                    micBtn.innerText = "🛑 Απενεργοποίηση"; // Αλλαγή κειμένου
+                    micBtn.innerText = "🛑 Απενεργοποίηση"; 
                     subtitle.innerText = "Ακούω...";
                 } else {
                     recognition.stop();
