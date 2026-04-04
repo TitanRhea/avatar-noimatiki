@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Avatar System - Original Rhea File</title>
+    <title>Avatar System v5 - Draco Compressed</title>
     <style>
         body { margin: 0; overflow: hidden; background-color: #f0e6dc; font-family: 'Segoe UI', sans-serif; }
         #canvas-container { width: 100vw; height: 100vh; display: block; }
@@ -12,10 +12,10 @@
             text-align: center; width: 100%; pointer-events: none;
         }
         #subtitle {
-            font-size: 18px; color: #333; background: rgba(255, 255, 255, 0.95);
+            font-size: 20px; color: #333; background: rgba(255, 255, 255, 0.95);
             padding: 12px 25px; border-radius: 20px; display: inline-block; 
             margin-bottom: 15px; font-weight: bold; box-shadow: 0 4px 15px rgba(0,0,0,0.1);
-            min-width: 350px; border: 2px solid #4CAF50;
+            min-width: 400px; border: 2px solid #4CAF50;
         }
         .controls { pointer-events: auto; }
         button { 
@@ -30,14 +30,16 @@
     <div id="canvas-container"></div>
     
     <div id="ui-layer">
-        <div id="subtitle">Φόρτωση rhea.glb...</div><br>
+        <div id="subtitle">Αναμονή φόρτωσης...</div><br>
         <div class="controls">
             <button id="mic-btn">🎙️ Ενεργοποίηση Μικροφώνου</button>
         </div>
     </div>
 
+    <!-- Libraries -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/GLTFLoader.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/DRACOLoader.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/gsap.min.js"></script>
 
@@ -56,33 +58,51 @@
         controls.target.set(0, 1.4, 0);
         controls.update();
 
-        scene.add(new THREE.AmbientLight(0xffffff, 1.2));
-        const light = new THREE.DirectionalLight(0xffffff, 0.8);
+        scene.add(new THREE.AmbientLight(0xffffff, 1.3));
+        const light = new THREE.DirectionalLight(0xffffff, 0.9);
         light.position.set(5, 10, 5);
         scene.add(light);
 
-        let currentModel = null, bones = {}, is_busy = false;
+        let currentModel = null, bones = {};
         const deg = (d) => d * (Math.PI / 180);
         const basePose = { x: 54, y: 30, z: 17 };
         const VOWEL_OPEN = { 'α': 115, 'ε': 105, 'η': 105, 'ι': 100, 'ο': 110, 'υ': 100, 'ω': 110 };
 
+        // --- DRACO & GLTF LOADER SETUP ---
+        const loader = new THREE.GLTFLoader();
+        const dracoLoader = new THREE.DRACOLoader();
+        // Χρήση του Google CDN για τον αποκωδικοποιητή Draco
+        dracoLoader.setDecoderPath('https://www.gstatic.com/draco/versioned/decoders/1.4.1/');
+        loader.setDRACOLoader(dracoLoader);
+
         function loadAvatar(file) {
+            const finalPath = file + "?v=" + Date.now();
+            document.getElementById('subtitle').innerText = "Λήψη Draco αρχείου...";
+            
             if (currentModel) scene.remove(currentModel);
             bones = { r_joints: {}, r_fingers: [] };
             
-            new THREE.GLTFLoader().load(file, (gltf) => {
+            loader.load(finalPath, (gltf) => {
                 currentModel = gltf.scene;
+
                 currentModel.traverse(n => {
+                    // 1. ΕΞΑΦΑΝΙΣΗ ΤΟΥ ΚΥΒΟΥ
+                    if (n.isMesh) {
+                        const box = new THREE.Box3().setFromObject(n);
+                        const size = box.getSize(new THREE.Vector3());
+                        if (size.x > 1.5 || n.name.toLowerCase().includes('cube')) {
+                            n.visible = false; 
+                        }
+                    }
+                    
+                    // 2. ΑΝΙΧΝΕΥΣΗ BONES
                     if (n.isBone) {
                         const bl = n.name.toLowerCase();
-                        if (bl.includes('jaw')) {
-                            bones.jaw = n;
-                            console.log("SUCCESS: Jaw bone found in rhea.glb!");
-                        }
+                        if (bl.includes('jaw')) bones.jaw = n;
                         if (bl.endsWith('rightarm') || bl.includes('rightarm')) bones.r_shoulder = n;
                         if (bl.endsWith('rightforearm') || bl.includes('rightforearm')) bones.r_elbow = n;
                         if (bl.endsWith('righthand') || bl.includes('righthand')) bones.r_wrist = n;
-                        
+
                         const match = bl.match(/(thumb|index|middle|ring|pinky)(\d)/);
                         if (bl.includes('righthand') && match) {
                             bones.r_joints[match[0]] = n;
@@ -90,17 +110,24 @@
                         }
                     }
                 });
-                currentModel.position.set(0, 0, 0);
+
+                currentModel.position.set(0, 0, 0); 
                 currentModel.scale.set(1.1, 1.1, 1.1);
                 scene.add(currentModel);
-                
-                setTimeout(() => { 
+
+                // ΔΙΟΡΘΩΣΗ T-POSE
+                setTimeout(() => {
                     resetPose(0.1); 
                     if (bones.jaw) bones.jaw.rotation.x = deg(90);
-                    else document.getElementById('subtitle').innerText = "Το rhea.glb δεν έχει Jaw bone.";
-                }, 200);
-                
-                document.getElementById('subtitle').innerText = "Το rhea.glb φορτώθηκε!";
+                    document.getElementById('subtitle').innerText = "Rhea Έτοιμη! Μίλησε στο μικρόφωνο.";
+                }, 300);
+
+            }, (xhr) => {
+                const p = Math.round((xhr.loaded / xhr.total) * 100);
+                if (p) document.getElementById('subtitle').innerText = "Αποσυμπίεση: " + p + "%";
+            }, (err) => {
+                document.getElementById('subtitle').innerText = "Σφάλμα φόρτωσης updated_model.glb";
+                console.error(err);
             });
         }
 
@@ -136,8 +163,8 @@
             micBtn.onclick = () => { recognition.start(); micBtn.classList.add('listening'); };
         }
 
-        // Φορτώνουμε το παλιό αρχείο rhea.glb
-        loadAvatar('rhea.glb');
+        // ΕΚΚΙΝΗΣΗ
+        loadAvatar('updated_model.glb');
 
         function animate() { requestAnimationFrame(animate); renderer.render(scene, camera); }
         animate();
