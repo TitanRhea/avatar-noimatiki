@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Web Avatar - 1Fix T-Pose & Lip Sync</title>
+    <title>Avatar System - Test Mode</title>
     <style>
         body { margin: 0; overflow: hidden; background-color: #f0e6dc; font-family: 'Segoe UI', sans-serif; }
         #canvas-container { width: 100vw; height: 100vh; display: block; }
@@ -12,10 +12,10 @@
             text-align: center; width: 100%; pointer-events: none;
         }
         #subtitle {
-            font-size: 20px; color: #333; background: rgba(255, 255, 255, 0.95);
+            font-size: 18px; color: #333; background: rgba(255, 255, 255, 0.95);
             padding: 12px 25px; border-radius: 20px; display: inline-block; 
             margin-bottom: 15px; font-weight: bold; box-shadow: 0 4px 15px rgba(0,0,0,0.1);
-            min-width: 420px;
+            min-width: 350px; border: 2px solid #4CAF50;
         }
         .controls { pointer-events: auto; }
         button { 
@@ -23,7 +23,6 @@
             cursor: pointer; border: none; background: #4CAF50; color: white; font-weight: bold;
         }
         button.listening { background-color: #f44336; }
-        select { font-size: 16px; padding: 12px; border-radius: 10px; }
     </style>
 </head>
 <body>
@@ -31,13 +30,9 @@
     <div id="canvas-container"></div>
     
     <div id="ui-layer">
-        <div id="subtitle">Αναμονή φόρτωσης...</div><br>
+        <div id="subtitle">Αναμονή για test.glb...</div><br>
         <div class="controls">
-            <select id="avatar-select" onchange="loadAvatar(this.value)">
-                <option value="Rhea1.glb">Avatar: Rhea (Νέο Μοντέλο)</option>
-                <option value="titan.glb">Avatar: Titan (mixamorig9)</option>
-            </select>
-            <button id="mic-btn">🎙️ Ενεργοποίηση</button>
+            <button id="mic-btn">🎙️ Ενεργοποίηση Μικροφώνου</button>
         </div>
     </div>
 
@@ -50,17 +45,19 @@
         const scene = new THREE.Scene();
         scene.background = new THREE.Color(0xf0e6dc);
         const camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 100);
-        camera.position.set(0, 1.8, 4.5); 
+        camera.position.set(0, 1.6, 3.5); 
+
         const renderer = new THREE.WebGLRenderer({ antialias: true });
         renderer.setSize(window.innerWidth, window.innerHeight);
         renderer.outputEncoding = THREE.sRGBEncoding;
         document.getElementById('canvas-container').appendChild(renderer.domElement);
+
         const controls = new THREE.OrbitControls(camera, renderer.domElement);
-        controls.target.set(0, 1.4, 0); 
+        controls.target.set(0, 1.4, 0);
         controls.update();
 
-        scene.add(new THREE.AmbientLight(0xffffff, 0.9));
-        const light = new THREE.DirectionalLight(0xffffff, 0.7);
+        scene.add(new THREE.AmbientLight(0xffffff, 1.2));
+        const light = new THREE.DirectionalLight(0xffffff, 0.8);
         light.position.set(5, 10, 5);
         scene.add(light);
 
@@ -68,35 +65,30 @@
         const deg = (d) => d * (Math.PI / 180);
         const basePose = { x: 54, y: 30, z: 17 };
         const VOWEL_OPEN = { 'α': 115, 'ε': 105, 'η': 105, 'ι': 100, 'ο': 110, 'υ': 100, 'ω': 110 };
+        let gestureQueue = [];
 
         function loadAvatar(file) {
-            // Το "?v=" + Date.now() αναγκάζει τον browser να κατεβάσει το ΦΡΕΣΚΟ αρχείο
-            const freshFile = file + "?v=" + Date.now();
+            const finalPath = file + "?v=" + Date.now();
             document.getElementById('subtitle').innerText = "Φόρτωση: " + file;
             
             if (currentModel) scene.remove(currentModel);
             bones = { r_joints: {}, r_fingers: [] };
             
-            new THREE.GLTFLoader().load(freshFile, (gltf) => {
+            new THREE.GLTFLoader().load(finalPath, (gltf) => {
                 currentModel = gltf.scene;
-
                 currentModel.traverse(n => {
                     if (n.isMesh) {
-                        // Καλού-κακού κρύβουμε αντικείμενα που μπορεί να ξεχάστηκαν στο Blender
-                        if (n.name.toLowerCase().includes('cube') || n.name.toLowerCase().includes('box')) {
+                        const meshSize = new THREE.Box3().setFromObject(n).getSize(new THREE.Vector3());
+                        if (meshSize.x > 2 || n.name.toLowerCase().includes('cube') || n.name.toLowerCase().includes('sphere')) {
                             n.visible = false; 
                         }
                     }
                     if (n.isBone) {
                         const bl = n.name.toLowerCase();
-                        // Ανίχνευση Jaw για Lip Sync
                         if (bl.includes('jaw')) bones.jaw = n;
-                        
-                        // Ανίχνευση δεξιού χεριού (Universal)
                         if (bl.endsWith('rightarm') || bl.includes('rightarm')) bones.r_shoulder = n;
                         if (bl.endsWith('rightforearm') || bl.includes('rightforearm')) bones.r_elbow = n;
                         if (bl.endsWith('righthand') || bl.includes('righthand')) bones.r_wrist = n;
-
                         const match = bl.match(/(thumb|index|middle|ring|pinky)(\d)/);
                         if (bl.includes('righthand') && match) {
                             bones.r_joints[match[0]] = n;
@@ -104,21 +96,17 @@
                         }
                     }
                 });
-
-                currentModel.position.set(0, 0.4, 0); 
+                currentModel.position.set(0, 0, 0); 
                 currentModel.scale.set(1.1, 1.1, 1.1);
                 scene.add(currentModel);
-
-                // ΕΠΙΒΟΛΗ ΑΡΧΙΚΗΣ ΣΤΑΣΗΣ (Αντί για T-Pose)
-                setTimeout(() => {
-                    resetPose(0.1); 
-                    if (bones.jaw) bones.jaw.rotation.x = deg(90);
-                }, 100);
-
-                document.getElementById('subtitle').innerText = "Έτοιμο! Η T-Pose διορθώθηκε.";
-            }, undefined, (err) => {
-                document.getElementById('subtitle').innerText = "ΣΦΑΛΜΑ: Το αρχείο δεν βρέθηκε!";
-            });
+                setTimeout(() => { resetPose(0.1); if (bones.jaw) bones.jaw.rotation.x = deg(90); }, 200);
+                document.getElementById('subtitle').innerText = "Το test.glb φορτώθηκε!";
+            }, 
+            (xhr) => {
+                const p = Math.round((xhr.loaded / xhr.total) * 100);
+                if (p) document.getElementById('subtitle').innerText = "Λήψη: " + p + "%";
+            },
+            (err) => { document.getElementById('subtitle').innerText = "Σφάλμα φόρτωσης test.glb"; });
         }
 
         function resetPose(speed = 0.5) {
@@ -140,294 +128,32 @@
             });
         }
 
-        const micBtn = document.getElementById('mic-btn');
-        const subtitle = document.getElementById('subtitle');
-        let recognition = null, isListening = false;
-
-        if ('webkitSpeechRecognition' in window) {
-            recognition = new webkitSpeechRecognition();
-            recognition.lang = 'el-GR';
-            recognition.continuous = true;
-            recognition.onresult = (event) => {
-                let text = event.results[event.results.length-1][0].transcript.toLowerCase().trim();
-                subtitle.innerText = "Είπες: " + text;
-                speakWord(text);
-            };
-        }
-
-        micBtn.onclick = () => {
-            if (!isListening) { recognition.start(); isListening = true; micBtn.classList.add('listening'); }
-            else { recognition.stop(); isListening = false; micBtn.classList.remove('listening'); }
-        };
-
-        // Αρχική εκκίνηση
-        loadAvatar('Rhea1.glb');
-        function animate() { requestAnimationFrame(animate); renderer.render(scene, camera); }
-        animate();
-    </script>
-</body>
-</html>
-<!DOCTYPE html>
-<html lang="el">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Avatar System v3 - Lip Sync & Auto-Fix</title>
-    <style>
-        body { margin: 0; overflow: hidden; background-color: #f0e6dc; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
-        #canvas-container { width: 100vw; height: 100vh; display: block; }
-        #ui-layer {
-            position: absolute; bottom: 30px; left: 50%; transform: translateX(-50%);
-            text-align: center; width: 100%; pointer-events: none;
-        }
-        #subtitle {
-            font-size: 20px; color: #333; background: rgba(255, 255, 255, 0.95);
-            padding: 12px 25px; border-radius: 20px; display: inline-block; 
-            margin-bottom: 15px; font-weight: bold; box-shadow: 0 4px 15px rgba(0,0,0,0.1);
-            min-width: 400px; border: 2px solid #4CAF50;
-        }
-        .controls { pointer-events: auto; }
-        button { 
-            font-size: 16px; padding: 12px 25px; margin: 5px; border-radius: 10px; 
-            cursor: pointer; border: none; background: #4CAF50; color: white; font-weight: bold; transition: 0.3s;
-        }
-        button.listening { background-color: #f44336; animation: pulse 1.5s infinite; }
-        @keyframes pulse { 0% { opacity: 1; } 50% { opacity: 0.7; } 100% { opacity: 1; } }
-        select { font-size: 16px; padding: 12px; border-radius: 10px; border: 1px solid #ddd; background: white; cursor: pointer;}
-    </style>
-</head>
-<body>
-
-    <div id="canvas-container"></div>
-    
-    <div id="ui-layer">
-        <div id="subtitle">Προετοιμασία Συστήματος...</div><br>
-        <div class="controls">
-            <select id="avatar-select" onchange="loadAvatar(this.value)">
-                <option value="Rhea1.glb">Avatar: Rhea (Νέο Μοντέλο)</option>
-                <option value="titan.glb">Avatar: Titan (mixamorig9)</option>
-            </select>
-            <button id="mic-btn">🎙️ Ενεργοποίηση Μικροφώνου</button>
-        </div>
-    </div>
-
-    <!-- Three.js & GSAP -->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/GLTFLoader.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/gsap.min.js"></script>
-
-    <script>
-        // === INITIALIZATION ===
-        const scene = new THREE.Scene();
-        scene.background = new THREE.Color(0xf0e6dc);
-        const camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 100);
-        camera.position.set(0, 1.6, 4); 
-
-        const renderer = new THREE.WebGLRenderer({ antialias: true });
-        renderer.setSize(window.innerWidth, window.innerHeight);
-        renderer.outputEncoding = THREE.sRGBEncoding;
-        document.getElementById('canvas-container').appendChild(renderer.domElement);
-
-        const controls = new THREE.OrbitControls(camera, renderer.domElement);
-        controls.target.set(0, 1.4, 0);
-        controls.update();
-
-        scene.add(new THREE.AmbientLight(0xffffff, 0.9));
-        const light = new THREE.DirectionalLight(0xffffff, 0.7);
-        light.position.set(5, 10, 5);
-        scene.add(light);
-
-        let currentModel = null, bones = {}, is_busy = false;
-        const deg = (d) => d * (Math.PI / 180);
-        const basePose = { x: 54, y: 30, z: 17 };
-        const VOWEL_OPEN = { 'α': 115, 'ε': 105, 'η': 105, 'ι': 100, 'ο': 110, 'υ': 100, 'ω': 110 };
-        let gestureQueue = [];
-
-        // === CORE FUNCTIONS ===
-
-        function loadAvatar(file) {
-            const finalPath = file + "?v=" + Date.now(); // Cache-busting
-            document.getElementById('subtitle').innerText = "Λήψη αρχείου...";
-            
-            if (currentModel) scene.remove(currentModel);
-            bones = { r_joints: {}, r_fingers: [] };
-            
-            new THREE.GLTFLoader().load(finalPath, (gltf) => {
-                currentModel = gltf.scene;
-
-                currentModel.traverse(n => {
-                    // Απόκρυψη ανεπιθύμητων αντικειμένων (κύβοι/σφαίρες)
-                    if (n.isMesh) {
-                        const meshSize = new THREE.Box3().setFromObject(n).getSize(new THREE.Vector3());
-                        if (meshSize.x > 2 || n.name.toLowerCase().includes('cube') || n.name.toLowerCase().includes('sphere')) {
-                            n.visible = false; 
-                        }
-                    }
-                    
-                    if (n.isBone) {
-                        const bl = n.name.toLowerCase();
-                        if (bl.includes('jaw')) bones.jaw = n;
-                        if (bl.endsWith('rightarm') || bl.includes('rightarm')) bones.r_shoulder = n;
-                        if (bl.endsWith('rightforearm') || bl.includes('rightforearm')) bones.r_elbow = n;
-                        if (bl.endsWith('righthand') || bl.includes('righthand')) bones.r_wrist = n;
-
-                        const match = bl.match(/(thumb|index|middle|ring|pinky)(\d)/);
-                        if (bl.includes('righthand') && match) {
-                            bones.r_joints[match[0]] = n;
-                            bones.r_fingers.push(n);
-                        }
-                    }
-                });
-
-                currentModel.position.set(0, 0, 0); 
-                currentModel.scale.set(1.1, 1.1, 1.1);
-                scene.add(currentModel);
-
-                // Επιβολή αρχικής στάσης μετά από λίγο για να προλάβει το φόρτωμα
-                setTimeout(() => {
-                    resetPose(0.1); 
-                    if (bones.jaw) bones.jaw.rotation.x = deg(90);
-                }, 200);
-
-                document.getElementById('subtitle').innerText = "Avatar Έτοιμο!";
-            }, 
-            (xhr) => {
-                const percent = Math.round((xhr.loaded / xhr.total) * 100);
-                if (percent) document.getElementById('subtitle').innerText = "Λήψη: " + percent + "%";
-            },
-            (err) => {
-                document.getElementById('subtitle').innerText = "ΣΦΑΛΜΑ: Το αρχείο δεν φορτώνεται!";
-                console.error(err);
-            });
-        }
-
-        function resetPose(speed = 0.5) {
-            if (!bones.r_shoulder) return;
-            gsap.to(bones.r_shoulder.rotation, { x: deg(basePose.x), y: deg(basePose.y), z: deg(basePose.z), duration: speed });
-            if(bones.r_elbow) gsap.to(bones.r_elbow.rotation, { x: 0, y: 0, z: 0, duration: speed });
-            if(bones.r_wrist) gsap.to(bones.r_wrist.rotation, { x: 0, y: 0, z: 0, duration: speed });
-            bones.r_fingers.forEach(f => gsap.to(f.rotation, { x:0, y:0, z:0, duration: speed }));
-        }
-
-        function speakWord(word, total_time = 1.5) {
-            if (!bones.jaw) return;
-            const vowels = [...word.toLowerCase()].filter(c => VOWEL_OPEN[c]);
-            const step_time = total_time / (vowels.length || 1);
-            const tl = gsap.timeline();
-            vowels.forEach(v => {
-                tl.to(bones.jaw.rotation, { x: deg(VOWEL_OPEN[v]), duration: step_time / 2, ease: "sine.inOut" })
-                  .to(bones.jaw.rotation, { x: deg(90), duration: step_time / 2, ease: "sine.inOut" });
-            });
-        }
-
-        function finalize_gesture() { 
-            resetPose(); 
-            setTimeout(() => { is_busy = false; processQueue(); }, 600); 
-        }
-
-        function processQueue() {
-            if (is_busy || gestureQueue.length === 0) return;
-            let next = gestureQueue.shift();
-            if (next === 'onoma') gesture_onoma();
-            else if (next === 'kalimera') gesture_kalimera();
-            else if (next === 'mesimeri') gesture_mesimeri();
-            else if (next === 'efcharisto') gesture_efcharisto();
-            else if (next === 'geia') gesture_geia();
-        }
-
-        // === GESTURES - CALIBRATION MODE ===
-
         function gesture_onoma() {
-            is_busy = true;
-            speakWord("Όνομα", 1.2);
-            // Εδώ θα βάλεις τις μοίρες σου στο διάλειμμα:
-            gsap.to(bones.r_shoulder.rotation, { x: deg(0), y: deg(0), z: deg(0), duration: 0.5 });
-            gsap.to(bones.r_elbow.rotation, { x: deg(0), y: deg(0), z: deg(0), duration: 0.5 });
-            gsap.to(bones.r_wrist.rotation, { x: deg(0), y: deg(0), z: deg(0), duration: 0.5 });
-            
-            // Όλα τα δάχτυλα ξεκλείδωτα:
+            is_busy = true; speakWord("Όνομα", 1.2);
+            gsap.to(bones.r_shoulder.rotation, { x: 0, y: 0, z: 0, duration: 0.5 });
+            gsap.to(bones.r_elbow.rotation, { x: 0, y: 0, z: 0, duration: 0.5 });
             const fingers = ['thumb', 'index', 'middle', 'ring', 'pinky'];
-            fingers.forEach(f => {
-                [1,2,3].forEach(num => {
-                    if(bones.r_joints[f+num]) gsap.to(bones.r_joints[f+num].rotation, { x: deg(0), y: deg(0), z: deg(0), duration: 0.5 });
-                });
-            });
-            setTimeout(finalize_gesture, 3000);
+            fingers.forEach(f => { [1,2,3].forEach(num => { if(bones.r_joints[f+num]) gsap.to(bones.r_joints[f+num].rotation, { x: 0, duration: 0.5 }); }); });
+            setTimeout(() => { resetPose(); is_busy = false; }, 3000);
         }
 
-        function gesture_kalimera() {
-            is_busy = true;
-            speakWord("Καλημέρα", 1.5);
-            gsap.to(bones.r_shoulder.rotation, { x: deg(70), y: deg(14), z: deg(-17), duration: 0.5 });
-            gsap.to(bones.r_elbow.rotation, { x: deg(108), y: deg(-31), z: deg(-69), duration: 0.5 });
-            setTimeout(() => {
-                gsap.to(bones.r_wrist.rotation, { x: deg(0), duration: 0.4 }); 
-                setTimeout(finalize_gesture, 1500);
-            }, 600);
-        }
-
-        function gesture_mesimeri() {
-            is_busy = true;
-            speakWord("Μεσημέρι", 1.5);
-            gsap.to(bones.r_shoulder.rotation, { x: deg(70), y: deg(14), z: deg(-17), duration: 0.5 });
-            setTimeout(() => {
-                gsap.to(bones.r_shoulder.rotation, { x: deg(0), duration: 0.5 }); 
-                gsap.to(bones.r_elbow.rotation, { x: deg(0), duration: 0.5 });
-                setTimeout(finalize_gesture, 1500);
-            }, 600);
-        }
-
-        function gesture_efcharisto() {
-            is_busy = true;
-            speakWord("Ευχαριστώ", 1.8);
-            gsap.to(bones.r_shoulder.rotation, { x: deg(27), y: deg(-35), z: deg(-26), duration: 0.5 });
-            setTimeout(finalize_gesture, 1500);
-        }
-
-        function gesture_geia() {
-            is_busy = true;
-            speakWord("Γεια", 0.8);
-            gsap.to(bones.r_shoulder.rotation, { x: deg(11), y: deg(18), z: deg(4), duration: 0.5 });
-            setTimeout(finalize_gesture, 1000);
-        }
-
-        // === VOICE RECOGNITION ===
         const micBtn = document.getElementById('mic-btn');
-        const subtitle = document.getElementById('subtitle');
-        let recognition = null, isListening = false;
-
         if ('webkitSpeechRecognition' in window) {
-            recognition = new webkitSpeechRecognition();
+            const recognition = new webkitSpeechRecognition();
             recognition.lang = 'el-GR';
             recognition.continuous = true;
             recognition.onresult = (event) => {
                 const text = event.results[event.results.length-1][0].transcript.toLowerCase().trim();
-                subtitle.innerText = "Είπες: " + text;
-                if (text.includes("όνομα")) gestureQueue.push('onoma');
-                else if (text.includes("καλημέρα")) gestureQueue.push('kalimera');
-                else if (text.includes("μεσημέρι")) gestureQueue.push('mesimeri');
-                else if (text.includes("ευχαριστώ")) gestureQueue.push('efcharisto');
-                else if (text.includes("γεια")) gestureQueue.push('geia');
-                processQueue();
+                document.getElementById('subtitle').innerText = "Είπες: " + text;
+                if (text.includes("όνομα")) gesture_onoma();
+                else speakWord(text);
             };
+            micBtn.onclick = () => { recognition.start(); micBtn.classList.add('listening'); };
         }
 
-        micBtn.onclick = () => {
-            if (!isListening) { recognition.start(); isListening = true; micBtn.classList.add('listening'); }
-            else { recognition.stop(); isListening = false; micBtn.classList.remove('listening'); }
-        };
-
-        // RUN
-        loadAvatar('Rhea1.glb');
+        loadAvatar('test.glb');
         function animate() { requestAnimationFrame(animate); renderer.render(scene, camera); }
         animate();
-
-        window.addEventListener('resize', () => {
-            camera.aspect = window.innerWidth / window.innerHeight;
-            camera.updateProjectionMatrix();
-            renderer.setSize(window.innerWidth, window.innerHeight);
-        });
     </script>
 </body>
 </html>
