@@ -2,63 +2,97 @@
 <html lang="el">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Web Avatar - Calibration Mode</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Avatar Live Calibration</title>
     <style>
-        body { margin: 0; overflow: hidden; background-color: #f0e6dc; font-family: 'Segoe UI', sans-serif; }
+        body { margin: 0; overflow: hidden; background-color: #f0e6dc; font-family: sans-serif; touch-action: none; }
         #canvas-container { width: 100vw; height: 100vh; display: block; }
-        #ui-layer {
-            position: absolute; bottom: 30px; left: 50%; transform: translateX(-50%);
-            text-align: center; width: 100%; pointer-events: auto;
+        
+        #calibration-panel {
+            position: absolute; top: 10px; left: 10px; right: 10px;
+            background: rgba(255, 255, 255, 0.95); padding: 15px; border-radius: 15px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.2); pointer-events: auto;
+            border: 2px solid #2196F3; max-height: 90vh; overflow-y: auto;
         }
-        #subtitle {
-            font-size: 22px; color: #333; background: rgba(255, 255, 255, 0.95);
-            padding: 12px 25px; border-radius: 20px; display: inline-block; 
-            margin-bottom: 15px; font-weight: bold; box-shadow: 0 4px 15px rgba(0,0,0,0.1);
-            min-width: 380px; pointer-events: none;
+
+        h3 { margin: 0 0 15px 0; text-align: center; color: #333; }
+        select { width: 100%; font-size: 16px; padding: 10px; margin-bottom: 15px; border-radius: 8px; border: 1px solid #ccc; }
+        
+        .slider-group { margin-bottom: 15px; }
+        .slider-group label { display: flex; justify-content: space-between; font-weight: bold; margin-bottom: 5px; color: #555; }
+        input[type=range] { width: 100%; margin: 0; }
+        
+        #log-panel {
+            background: #222; color: #0f0; padding: 10px; border-radius: 8px;
+            font-family: monospace; font-size: 14px; margin-top: 15px;
+            white-space: pre-wrap; word-break: break-all;
         }
-        .controls { display: flex; justify-content: center; gap: 10px; align-items: center; pointer-events: auto;}
-        button { 
-            font-size: 16px; padding: 12px 25px; border-radius: 10px; 
-            cursor: pointer; border: none; background: #4CAF50; color: white; font-weight: bold; transition: 0.3s;
-        }
-        button.listening { background-color: #f44336; animation: pulse 1.5s infinite; }
-        @keyframes pulse { 0% { opacity: 1; } 50% { opacity: 0.7; } 100% { opacity: 1; } }
-        select { font-size: 16px; padding: 12px; border-radius: 10px; border: 1px solid #ddd; background: white;}
     </style>
 </head>
 <body>
 
     <div id="canvas-container"></div>
     
-    <div id="ui-layer">
-        <div id="subtitle">Μικρόφωνο Κλειστό</div><br>
-        <div class="controls">
-            <select id="avatar-select" onchange="loadAvatar(this.value)">
-                <option value="updated_model.glb">Avatar: Rhea (Νέο Μοντέλο)</option>
-                <option value="titan.glb">Avatar: Titan (Άνδρας)</option>
-            </select>
-            <button id="mic-btn">🎙️ Ενεργοποίηση</button>
+    <div id="calibration-panel">
+        <h3>Ρύθμιση Πόζας (Live)</h3>
+        
+        <select id="bone-select" onchange="loadBoneValues()">
+            <optgroup label="Δεξί Χέρι">
+                <option value="r_shoulder">Δεξί Ώμος (Shoulder)</option>
+                <option value="r_elbow">Δεξί Αγκώνας (Elbow)</option>
+                <option value="r_wrist">Δεξί Καρπός (Wrist)</option>
+            </optgroup>
+            <optgroup label="Δεξιά Δάχτυλα">
+                <option value="thumb1">Αντίχειρας (Βάση)</option>
+                <option value="thumb2">Αντίχειρας (Μέση)</option>
+                <option value="index1">Δείκτης (Βάση)</option>
+                <option value="index2">Δείκτης (Μέση)</option>
+                <option value="middle1">Μέσος (Βάση)</option>
+                <option value="ring1">Παράμεσος (Βάση)</option>
+                <option value="pinky1">Μικρό (Βάση)</option>
+            </optgroup>
+            <optgroup label="Αριστερό Χέρι">
+                <option value="l_shoulder">Αριστερός Ώμος (Shoulder)</option>
+                <option value="l_elbow">Αριστερός Αγκώνας (Elbow)</option>
+                <option value="l_wrist">Αριστερός Καρπός (Wrist)</option>
+            </optgroup>
+        </select>
+
+        <div class="slider-group">
+            <label>Άξονας X (Πάνω/Κάτω) <span id="valX">0°</span></label>
+            <input type="range" id="sliderX" min="-180" max="180" value="0" oninput="applyRotation()">
         </div>
+        
+        <div class="slider-group">
+            <label>Άξονας Y (Μέσα/Έξω) <span id="valY">0°</span></label>
+            <input type="range" id="sliderY" min="-180" max="180" value="0" oninput="applyRotation()">
+        </div>
+        
+        <div class="slider-group">
+            <label>Άξονας Z (Στριφογύρισμα) <span id="valZ">0°</span></label>
+            <input type="range" id="sliderZ" min="-180" max="180" value="0" oninput="applyRotation()">
+        </div>
+
+        <div id="log-panel">Άλλαξε τις μπάρες για να δεις τους αριθμούς εδώ...</div>
     </div>
 
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/GLTFLoader.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/DRACOLoader.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/gsap.min.js"></script>
 
     <script>
         const scene = new THREE.Scene();
         scene.background = new THREE.Color(0xf0e6dc);
         const camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 100);
-        camera.position.set(0, 1.8, 4.5); 
+        camera.position.set(0, 1.4, 3.5); 
         const renderer = new THREE.WebGLRenderer({ antialias: true });
         renderer.setSize(window.innerWidth, window.innerHeight);
         renderer.outputEncoding = THREE.sRGBEncoding;
         document.getElementById('canvas-container').appendChild(renderer.domElement);
+        
         const controls = new THREE.OrbitControls(camera, renderer.domElement);
-        controls.target.set(0, 1.5, 0); 
+        controls.target.set(0, 1.2, 0); 
         controls.update();
 
         scene.add(new THREE.AmbientLight(0xffffff, 0.8));
@@ -66,205 +100,110 @@
         light.position.set(5, 10, 5);
         scene.add(light);
 
-        let currentModel = null, bones = {}, is_busy = false;
+        let currentModel = null, bones = { r_joints: {}, l_joints: {} };
         const deg = (d) => d * (Math.PI / 180);
+        const radToDeg = (r) => Math.round(r * 180 / Math.PI);
         
-        // Η Α-Pose
+        // H A-Pose σου για να ξεκινάει φυσιολογικά
         const basePose = { x: 54, y: 30, z: 17 };
-        const VOWEL_OPEN = { 'α': 115, 'ε': 105, 'η': 105, 'ι': 100, 'ο': 110, 'υ': 100, 'ω': 110 };
 
         const loader = new THREE.GLTFLoader();
         const dracoLoader = new THREE.DRACOLoader();
         dracoLoader.setDecoderPath('https://www.gstatic.com/draco/versioned/decoders/1.4.1/');
         loader.setDRACOLoader(dracoLoader);
 
-        function loadAvatar(file) {
-            const finalPath = file + "?v=" + Date.now();
-            if (currentModel) scene.remove(currentModel);
-            bones = { r_fingers: [], l_fingers: [], r_joints: {}, l_joints: {} }; 
+        loader.load('updated_model.glb?v=' + Date.now(), (gltf) => {
+            currentModel = gltf.scene;
+            currentModel.position.set(0, 0, 0); 
+            currentModel.scale.set(1.1, 1.1, 1.1); 
+            scene.add(currentModel);
             
-            loader.load(finalPath, (gltf) => {
-                currentModel = gltf.scene;
-                currentModel.position.set(0, 0.6, 0); 
-                currentModel.scale.set(1.1, 1.1, 1.1); 
-                scene.add(currentModel);
-                
-                currentModel.traverse(n => {
-                    if (n.isMesh && (n.name.toLowerCase().includes('cube') || n.name.toLowerCase().includes('box'))) n.visible = false;
+            currentModel.traverse(n => {
+                if (n.isMesh && (n.name.toLowerCase().includes('cube') || n.name.toLowerCase().includes('box'))) n.visible = false;
+                if (n.isBone) {
+                    const bName = n.name;
+                    const bLower = bName.toLowerCase();
                     
-                    if (n.isBone) {
-                        const bName = n.name;
-                        const bLower = bName.toLowerCase();
-                        
-                        // Στόμα
-                        if (bLower.includes('jaw')) bones.jaw = n;
-                        
-                        // Άκρα
-                        if (bName === 'mixamorig6RightArm') bones.r_shoulder = n;
-                        if (bName === 'mixamorig6RightForeArm') bones.r_elbow = n;
-                        if (bName === 'mixamorig6RightHand') bones.r_wrist = n;
+                    if (bName === 'mixamorig6RightArm') bones.r_shoulder = n;
+                    if (bName === 'mixamorig6RightForeArm') bones.r_elbow = n;
+                    if (bName === 'mixamorig6RightHand') bones.r_wrist = n;
 
-                        if (bName === 'mixamorig6LeftArm') bones.l_shoulder = n;
-                        if (bName === 'mixamorig6LeftForeArm') bones.l_elbow = n;
-                        if (bName === 'mixamorig6LeftHand') bones.l_wrist = n;
+                    if (bName === 'mixamorig6LeftArm') bones.l_shoulder = n;
+                    if (bName === 'mixamorig6LeftForeArm') bones.l_elbow = n;
+                    if (bName === 'mixamorig6LeftHand') bones.l_wrist = n;
 
-                        // Δάχτυλα
-                        const match = bLower.match(/(thumb|index|middle|ring|pinky)(\d)/);
-                        if (match) {
-                            if (bLower.includes('right')) {
-                                bones.r_joints[match[0]] = n;
-                                bones.r_fingers.push(n);
-                            } else if (bLower.includes('left')) {
-                                bones.l_joints[match[0]] = n;
-                                bones.l_fingers.push(n);
-                            }
-                        }
+                    const match = bLower.match(/(thumb|index|middle|ring|pinky)(\d)/);
+                    if (match) {
+                        if (bLower.includes('right')) bones.r_joints[match[0]] = n;
+                        if (bLower.includes('left')) bones.l_joints[match[0]] = n;
                     }
-                });
+                }
+            });
+            
+            // Βάλε την Α-Pose αρχικά
+            if(bones.r_shoulder) bones.r_shoulder.rotation.set(deg(basePose.x), deg(basePose.y), deg(basePose.z));
+            if(bones.l_shoulder) bones.l_shoulder.rotation.set(deg(basePose.x), deg(-basePose.y), deg(-basePose.z));
+            
+            loadBoneValues(); // Φόρτωσε τις τιμές στις μπάρες
+        });
+
+        // --- ΛΟΓΙΚΗ ΓΙΑ ΤΙΣ ΜΠΑΡΕΣ (SLIDERS) ---
+
+        function getSelectedBone() {
+            let val = document.getElementById('bone-select').value;
+            if (bones[val]) return { bone: bones[val], name: val };
+            if (bones.r_joints[val]) return { bone: bones.r_joints[val], name: 'r_' + val };
+            if (bones.l_joints[val]) return { bone: bones.l_joints[val], name: 'l_' + val };
+            return null;
+        }
+
+        function loadBoneValues() {
+            let selection = getSelectedBone();
+            if (selection && selection.bone) {
+                let x = radToDeg(selection.bone.rotation.x);
+                let y = radToDeg(selection.bone.rotation.y);
+                let z = radToDeg(selection.bone.rotation.z);
                 
-                setTimeout(() => {
-                    resetPose(0.1);
-                    if (bones.jaw) bones.jaw.rotation.x = deg(90);
-                    document.getElementById('subtitle').innerText = "Rhea: Calibration Mode Έτοιμο!";
-                }, 400);
-            });
-        }
-
-        function resetPose(speed = 0.5) {
-            if (!bones.r_shoulder) return;
-            gsap.to(bones.r_shoulder.rotation, { x: deg(basePose.x), y: deg(basePose.y), z: deg(basePose.z), duration: speed });
-            if (bones.l_shoulder) gsap.to(bones.l_shoulder.rotation, { x: deg(basePose.x), y: deg(-basePose.y), z: deg(-basePose.z), duration: speed });
-            [bones.r_elbow, bones.l_elbow, bones.r_wrist, bones.l_wrist].forEach(b => { if(b) gsap.to(b.rotation, { x: 0, y: 0, z: 0, duration: speed }); });
-            bones.r_fingers.concat(bones.l_fingers).forEach(f => gsap.to(f.rotation, { x:0, y:0, z:0, duration: speed }));
-        }
-
-        function speakWord(word, total_time = 1.5) {
-            if (!bones.jaw) return;
-            const vowels = [...word.toLowerCase()].filter(c => VOWEL_OPEN[c]);
-            const step_time = total_time / (vowels.length || 1);
-            const tl = gsap.timeline();
-            vowels.forEach(v => {
-                tl.to(bones.jaw.rotation, { x: deg(VOWEL_OPEN[v]), duration: step_time / 2, ease: "sine.inOut" })
-                  .to(bones.jaw.rotation, { x: deg(90), duration: step_time / 2, ease: "sine.inOut" });
-            });
-        }
-
-        function finalize_gesture() { 
-            resetPose(); 
-            setTimeout(() => { is_busy = false; }, 600); 
-        }
-
-
-        // ==========================================
-        // === CALIBRATION MODE (ΠΕΣ "ΔΟΚΙΜΗ") ===
-        // ==========================================
-        
-        function gesture_dokimi() {
-            is_busy = true; 
-            speakWord("Δοκιμή", 1.0);
-
-            // --- ΔΕΞΙ ΧΕΡΙ ---
-            // Ώμος, Αγκώνας, Καρπός
-            if(bones.r_shoulder) gsap.to(bones.r_shoulder.rotation, { x: deg(0), y: deg(0), z: deg(0), duration: 0.5 });
-            if(bones.r_elbow) gsap.to(bones.r_elbow.rotation, { x: deg(0), y: deg(0), z: deg(0), duration: 0.5 });
-            if(bones.r_wrist) gsap.to(bones.r_wrist.rotation, { x: deg(0), y: deg(0), z: deg(0), duration: 0.5 });
-
-            // Δάχτυλα Δεξιού Χεριού (thumb, index, middle, ring, pinky) -> 1, 2, 3 είναι οι φάλαγγες
-            ['thumb', 'index', 'middle', 'ring', 'pinky'].forEach(f => {
-                [1,2,3].forEach(num => {
-                    if(bones.r_joints[f+num]) {
-                        gsap.to(bones.r_joints[f+num].rotation, { 
-                            x: deg(0), // <- Βάλε μοίρες εδώ για να λυγίσουν
-                            y: deg(0), 
-                            z: deg(0), 
-                            duration: 0.5 
-                        });
-                    }
-                });
-            });
-
-            // --- ΑΡΙΣΤΕΡΟ ΧΕΡΙ ---
-            // Ώμος, Αγκώνας, Καρπός
-            if(bones.l_shoulder) gsap.to(bones.l_shoulder.rotation, { x: deg(0), y: deg(0), z: deg(0), duration: 0.5 });
-            if(bones.l_elbow) gsap.to(bones.l_elbow.rotation, { x: deg(0), y: deg(0), z: deg(0), duration: 0.5 });
-            if(bones.l_wrist) gsap.to(bones.l_wrist.rotation, { x: deg(0), y: deg(0), z: deg(0), duration: 0.5 });
-
-            // Δάχτυλα Αριστερού Χεριού
-            ['thumb', 'index', 'middle', 'ring', 'pinky'].forEach(f => {
-                [1,2,3].forEach(num => {
-                    if(bones.l_joints[f+num]) {
-                        gsap.to(bones.l_joints[f+num].rotation, { 
-                            x: deg(0), // <- Βάλε μοίρες εδώ για να λυγίσουν
-                            y: deg(0), 
-                            z: deg(0), 
-                            duration: 0.5 
-                        });
-                    }
-                });
-            });
-
-            // Κρατάει την πόζα για 5 δευτερόλεπτα και μετά επανέρχεται
-            setTimeout(finalize_gesture, 5000); 
-        }
-
-        // ==========================================
-
-
-        // --- ΦΩΝΗΤΙΚΟΣ ΕΛΕΓΧΟΣ ---
-        const micBtn = document.getElementById('mic-btn');
-        const subtitle = document.getElementById('subtitle');
-        let recognition = null;
-        let isListening = false;
-
-        if ('webkitSpeechRecognition' in window) {
-            recognition = new webkitSpeechRecognition();
-            recognition.lang = 'el-GR';
-            recognition.continuous = false; 
-            recognition.interimResults = false; 
-
-            recognition.onresult = (event) => {
-                const text = event.results[0][0].transcript.toLowerCase().trim();
-                subtitle.innerText = "Είπες: " + text;
-
-                if (text.includes("δοκιμή") || text.includes("δοκιμη")) {
-                    if (!is_busy) gesture_dokimi();
-                } else {
-                    speakWord(text);
-                }
-            };
-            
-            recognition.onerror = (event) => { 
-                if (event.error !== 'no-speech') {
-                    isListening = false; 
-                    micBtn.classList.remove('listening'); 
-                    micBtn.innerText = "🎙️ Ενεργοποίηση"; 
-                }
-            };
-            
-            recognition.onend = () => { 
-                if (isListening) {
-                    try { recognition.start(); } catch(e) {}
-                } 
-            };
-        }
-
-        micBtn.onclick = () => {
-            if (!isListening) {
-                try { recognition.start(); } catch(e) {}
-                isListening = true;
-                micBtn.innerText = "🛑 Κλείσιμο";
-                micBtn.classList.add('listening');
-                subtitle.innerText = "Ακούω (Πες 'Δοκιμή')...";
-            } else {
-                isListening = false;
-                recognition.stop();
-                micBtn.innerText = "🎙️ Ενεργοποίηση";
-                micBtn.classList.remove('listening');
-                subtitle.innerText = "Μικρόφωνο Κλειστό";
+                document.getElementById('sliderX').value = x;
+                document.getElementById('sliderY').value = y;
+                document.getElementById('sliderZ').value = z;
+                
+                document.getElementById('valX').innerText = x + "°";
+                document.getElementById('valY').innerText = y + "°";
+                document.getElementById('valZ').innerText = z + "°";
             }
-        };
+        }
 
-        loadAvatar('updated_model.glb');
+        let savedPoses = {};
+
+        function applyRotation() {
+            let selection = getSelectedBone();
+            if (selection && selection.bone) {
+                let x = document.getElementById('sliderX').value;
+                let y = document.getElementById('sliderY').value;
+                let z = document.getElementById('sliderZ').value;
+                
+                document.getElementById('valX').innerText = x + "°";
+                document.getElementById('valY').innerText = y + "°";
+                document.getElementById('valZ').innerText = z + "°";
+
+                // Κουνάει το άβαταρ ζωντανά
+                selection.bone.rotation.set(deg(x), deg(y), deg(z));
+                
+                // Αποθηκεύει τη ρύθμιση για να την τυπώσει στο μαύρο κουτί
+                savedPoses[selection.name] = `{ x: deg(${x}), y: deg(${y}), z: deg(${z}) }`;
+                updateLog();
+            }
+        }
+
+        function updateLog() {
+            let logText = "// Αντέγραψε αυτά τα νούμερα:\n";
+            for (let key in savedPoses) {
+                logText += key + ": " + savedPoses[key] + "\n";
+            }
+            document.getElementById('log-panel').innerText = logText;
+        }
+
         function animate() { requestAnimationFrame(animate); renderer.render(scene, camera); }
         animate();
 
