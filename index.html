@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Web Avatar - Final Custom Gestures v15 (Live Flow)</title>
+    <title>Web Avatar - 1Final Custom Gestures v15</title>
     <style>
         body { margin: 0; overflow: hidden; background-color: #f0e6dc; font-family: 'Segoe UI', sans-serif; }
         #canvas-container { width: 100vw; height: 100vh; display: block; }
@@ -254,9 +254,7 @@
                 // Η Καλημέρα 2η φάση (τα ακριβή σου νούμερα)
                 if(bones.r_shoulder) gsap.to(bones.r_shoulder.rotation, { x: deg(41), y: deg(-65), z: deg(-33), duration: 0.8 });
                 if(bones.r_elbow) gsap.to(bones.r_elbow.rotation, { x: deg(-161), y: deg(1), z: deg(-7), duration: 0.8 });
-                
-                // ΔΙΟΡΘΩΣΗ: Αρνητικό πρόσημο -180 στον άξονα X για να καθρεφτίσει από τη σωστή πλευρά
-                if(bones.r_wrist) gsap.to(bones.r_wrist.rotation, { x: deg(-180), y: deg(0), z: deg(0), duration: 0.8 }); 
+                if(bones.r_wrist) gsap.to(bones.r_wrist.rotation, { x: deg(7), y: deg(0), z: deg(-2), duration: 0.8 }); 
 
                 customKalimeraPart2('r', 0.8); 
 
@@ -352,7 +350,7 @@
             }, 600);
         }
 
-        // --- ΦΩΝΗΤΙΚΟΣ ΕΛΕΓΧΟΣ (ΛΑΪΒ ΡΟΗ ΚΑΙ ΕΠΑΝΑΛΗΨΕΙΣ) ---
+        // --- ΦΩΝΗΤΙΚΟΣ ΕΛΕΓΧΟΣ (ΑΥΤΟΜΑΤΗ ΡΟΗ ΓΙΑ ΚΙΝΗΤΑ) ---
         const micBtn = document.getElementById('mic-btn');
         const subtitle = document.getElementById('subtitle');
         let recognition = null;
@@ -361,61 +359,38 @@
         if ('webkitSpeechRecognition' in window) {
             recognition = new webkitSpeechRecognition();
             recognition.lang = 'el-GR';
-            
-            // Το κάνουμε false για να πιάνει τη λέξη και να τη στέλνει αμέσως (Λάιβ αίσθηση)
-            recognition.continuous = false; 
+            recognition.continuous = false; // "Στέλνει" τη λέξη μόλις σταματάς να μιλάς
             recognition.interimResults = false; 
 
             recognition.onresult = (event) => {
                 const text = event.results[0][0].transcript.toLowerCase().trim();
                 subtitle.innerText = "Είπες: " + text;
 
-                // Οι λέξεις κλειδιά. Προστέθηκαν μεγάλες φράσεις για να μην γίνεται μπέρδεμα.
+                let bestMatch = null;
+                let highestIndex = -1;
+                
                 const keywords = {
                     'efcharisto': ["ευχαριστώ", "ευχαριστω"],
                     'kalimera': ["καλημέρα", "καλημερα"],
                     'mesimeri': ["μεσημέρι", "μεσημερι"],
                     'geia': ["γεια", "χαίρετε"],
-                    'onoma': ["ποιο είναι το όνομά σου", "ποιο ειναι το ονομα σου", "όνομά σου", "ονομα σου", "όνομα", "ονομα", "ποιο", "ειναι", "σου"]
+                    'onoma': ["όνομα", "ποιο", "ειναι", "όνομά", "σου"]
                 };
 
-                let matches = [];
-                
-                // Βρίσκουμε όλες τις εμφανίσεις των λέξεων/φράσεων μέσα σε αυτό που άκουσε
-                for (const [gesture, triggerWords] of Object.entries(keywords)) {
-                    triggerWords.forEach(word => {
-                        let idx = text.indexOf(word);
-                        while (idx !== -1) {
-                            matches.push({ gesture: gesture, index: idx, length: word.length });
-                            idx = text.indexOf(word, idx + word.length);
+                for (const [gesture, words] of Object.entries(keywords)) {
+                    words.forEach(word => {
+                        let idx = text.lastIndexOf(word);
+                        if (idx > highestIndex) {
+                            highestIndex = idx;
+                            bestMatch = gesture;
                         }
                     });
                 }
-                
-                // Ταξινόμηση: Ό,τι ακούστηκε πρώτο μπαίνει πρώτο.
-                matches.sort((a, b) => {
-                    if (a.index === b.index) return b.length - a.length;
-                    return a.index - b.index;
-                });
 
-                let validMatches = [];
-                let lastEnd = 0;
-                
-                // Φιλτράρισμα: Πετάμε τις λέξεις που "καβαπάνε" (overlap) η μία την άλλη
-                matches.forEach(match => {
-                    if (match.index >= lastEnd) {
-                        validMatches.push(match);
-                        lastEnd = match.index + match.length;
-                    }
-                });
-
-                // Βάζουμε στην ουρά ΟΛΕΣ τις έγκυρες κινήσεις (Επιτρέπει επαναλήψεις!)
-                if (validMatches.length > 0) {
-                    validMatches.forEach(match => {
-                        enqueueGesture(match.gesture);
-                    });
+                if (bestMatch) {
+                    enqueueGesture(bestMatch);
                 } else {
-                    speakWord(text); // Απλό Lip Sync για άγνωστες λέξεις
+                    speakWord(text); // Lip sync για οποιαδήποτε άλλη λέξη
                 }
             };
             
@@ -427,7 +402,7 @@
                 }
             };
             
-            // Το μυστικό για ασταμάτητη, λάιβ ροή χωρίς να πατάς κουμπιά:
+            // Αυτόματη επανεκκίνηση για συνεχή ροή
             recognition.onend = () => { 
                 if (isListening) {
                     try { recognition.start(); } catch(e) {}
