@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Web Avatar - Final Custom Gestures v20 (Fixed Forearm & Wrist)</title>
+    <title>Web Avatar - 3Final Custom Gestures v21 (Vertical Forearm)</title>
     <style>
         body { margin: 0; overflow: hidden; background-color: #f0e6dc; font-family: 'Segoe UI', sans-serif; }
         #canvas-container { width: 100vw; height: 100vh; display: block; }
@@ -251,19 +251,16 @@
             if(bones.r_joints['pinky1']) gsap.to(bones.r_joints['pinky1'].rotation, {x: deg(52), y: deg(-31), z: deg(-8), duration: 0.4});
 
             setTimeout(() => {
-                // ΦΑΣΗ 2
+                // Η Καλημέρα 2η φάση
+                if(bones.r_shoulder) gsap.to(bones.r_shoulder.rotation, { x: deg(70), y: deg(14), z: deg(-17), duration: 0.3 }); // Ο ώμος μένει σταθερός
                 
-                // 1. Ο ώμος μένει ΣΤΑΘΕΡΟΣ στη θέση της 1ης φάσης.
-                if(bones.r_shoulder) gsap.to(bones.r_shoulder.rotation, { x: deg(70), y: deg(14), z: deg(-17), duration: 0.3 });
-                
-                // 2. Το αντιβράχιο μένει ΟΡΘΙΟ (x:80, z:-40) και κάνει timeline ΜΟΝΟ στον άξονα Y για να στρίψει.
+                // Ο αγκώνας (αντιβράχιο) έρχεται σε κάθετη όρθια θέση (X: 140) με τη σωστή φορά περιστροφής που ζήτησες.
                 if(bones.r_elbow) {
                     const elbowTurn = gsap.timeline();
-                    elbowTurn.to(bones.r_elbow.rotation, { x: deg(80), y: deg(-20), z: deg(-40), duration: 0.15, ease: "none" })
-                             .to(bones.r_elbow.rotation, { x: deg(80), y: deg(-20), z: deg(-40), duration: 0.15, ease: "power1.out" });
+                    elbowTurn.to(bones.r_elbow.rotation, { x: deg(140), y: deg(-20), z: deg(-40), duration: 0.15, ease: "none" })
+                             .to(bones.r_elbow.rotation, { x: deg(140), y: deg(-20), z: deg(-40), duration: 0.15, ease: "power1.out" });
                 }
 
-                // 3. Ο καρπός κάνει ΑΚΡΙΒΩΣ το timeline που ζήτησες και σου άρεσε (-160).
                 if(bones.r_wrist) {
                     const wristTurn = gsap.timeline();
                     wristTurn.to(bones.r_wrist.rotation, { x: 0, y: deg(-80), z: 0, duration: 0.15, ease: "none" })
