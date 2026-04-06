@@ -256,11 +256,11 @@
                 // 1. Ο ώμος μένει ΣΤΑΘΕΡΟΣ στη θέση της 1ης φάσης.
                 if(bones.r_shoulder) gsap.to(bones.r_shoulder.rotation, { x: deg(70), y: deg(14), z: deg(-17), duration: 0.3 });
                 
-                // 2. Το αντιβράχιο μένει ΟΡΘΙΟ (x:108, z:-69) και κάνει timeline ΜΟΝΟ στον άξονα Y για να στρίψει.
+                // 2. Το αντιβράχιο μένει ΟΡΘΙΟ (x:80, z:-40) και κάνει timeline ΜΟΝΟ στον άξονα Y για να στρίψει.
                 if(bones.r_elbow) {
                     const elbowTurn = gsap.timeline();
-                    elbowTurn.to(bones.r_elbow.rotation, { x: deg(108), y: deg(-60), z: deg(-69), duration: 0.15, ease: "none" })
-                             .to(bones.r_elbow.rotation, { x: deg(108), y: deg(-100), z: deg(-69), duration: 0.15, ease: "power1.out" });
+                    elbowTurn.to(bones.r_elbow.rotation, { x: deg(80), y: deg(-20), z: deg(-40), duration: 0.15, ease: "none" })
+                             .to(bones.r_elbow.rotation, { x: deg(80), y: deg(-20), z: deg(-40), duration: 0.15, ease: "power1.out" });
                 }
 
                 // 3. Ο καρπός κάνει ΑΚΡΙΒΩΣ το timeline που ζήτησες και σου άρεσε (-160).
