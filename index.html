@@ -3,26 +3,27 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Web Avatar - Final Sign Language Integrated with Queue</title>
+    <title>Web Avatar - Final Perfect Flow</title>
     <style>
         body { margin: 0; overflow: hidden; background-color: #f0e6dc; font-family: 'Segoe UI', sans-serif; }
         #canvas-container { width: 100vw; height: 100vh; display: block; }
         #ui-layer {
             position: absolute; bottom: 30px; left: 50%; transform: translateX(-50%);
-            text-align: center; width: 100%; pointer-events: none;
+            text-align: center; width: 100%; pointer-events: auto;
         }
         #subtitle {
             font-size: 22px; color: #333; background: rgba(255, 255, 255, 0.95);
             padding: 12px 25px; border-radius: 20px; display: inline-block; 
             margin-bottom: 15px; font-weight: bold; box-shadow: 0 4px 15px rgba(0,0,0,0.1);
-            min-width: 380px;
+            min-width: 380px; pointer-events: none;
         }
-        .controls { pointer-events: auto; }
+        .controls { display: flex; justify-content: center; gap: 10px; align-items: center; }
         button { 
-            font-size: 16px; padding: 12px 25px; margin: 5px; border-radius: 10px; 
+            font-size: 16px; padding: 12px 25px; border-radius: 10px; 
             cursor: pointer; border: none; background: #4CAF50; color: white; font-weight: bold; transition: 0.3s;
         }
-        button.listening { background-color: #f44336; }
+        button.listening { background-color: #f44336; animation: pulse 1.5s infinite; }
+        @keyframes pulse { 0% { opacity: 1; } 50% { opacity: 0.7; } 100% { opacity: 1; } }
         select { font-size: 16px; padding: 12px; border-radius: 10px; border: 1px solid #ddd; background: white;}
     </style>
 </head>
@@ -68,23 +69,15 @@
         let currentModel = null, bones = {}, is_busy = false;
         const deg = (d) => d * (Math.PI / 180);
         
-        // Η Α-Pose από τον κώδικα που δούλευε καλά στα άκρα
+        // Αρχική Α-Pose που δούλευε στα άκρα
         const basePose = { x: 54, y: 30, z: 17 };
         const VOWEL_OPEN = { 'α': 115, 'ε': 105, 'η': 105, 'ι': 100, 'ο': 110, 'υ': 100, 'ω': 110 };
 
         // === ΣΥΣΤΗΜΑ ΟΥΡΑΣ ΓΙΑ ΣΥΝΕΧΗ ΡΟΗ ===
         let gestureQueue = [];
-        let lastQueuedGesture = "";
-        let lastQueuedTime = 0;
 
         function enqueueGesture(gestureName) {
-            const now = Date.now();
-            if (gestureName === lastQueuedGesture && (now - lastQueuedTime < 3500)) return; 
-            
-            lastQueuedGesture = gestureName;
-            lastQueuedTime = now;
             gestureQueue.push(gestureName);
-            
             if (!is_busy) {
                 processQueue();
             }
@@ -101,7 +94,6 @@
             else if (nextGesture === 'onoma') gesture_onoma();
         }
 
-        // Ρυθμίσεις του loader (Υποστηρίζει και Draco πλέον)
         const loader = new THREE.GLTFLoader();
         const dracoLoader = new THREE.DRACOLoader();
         dracoLoader.setDecoderPath('https://www.gstatic.com/draco/versioned/decoders/1.4.1/');
@@ -119,30 +111,26 @@
                 scene.add(currentModel);
                 
                 currentModel.traverse(n => {
-                    // Εξαφάνιση του λευκού κύβου
                     if (n.isMesh && (n.name.toLowerCase().includes('cube') || n.name.toLowerCase().includes('box'))) n.visible = false;
                     
                     if (n.isBone) {
                         const bName = n.name;
                         const bLower = bName.toLowerCase();
-                        const match = bLower.match(/(thumb|index|middle|ring|pinky)(\d)/);
                         
-                        // Στόμα (Lip Sync)
+                        // Jaw (Στόμα)
                         if (bLower.includes('jaw')) bones.jaw = n;
                         
-                        // === ΕΞΥΠΝΗ & ΑΚΡΙΒΗΣ ΑΝΑΓΝΩΡΙΣΗ ΚΟΚΚΑΛΩΝ ΒΑΣΕΙ ΤΟΥ BONE DETECTOR ===
-                        
-                        // Δεξί Χέρι
-                        if (bName === 'mixamorig6RightArm' || (bLower.includes('rightarm') && !bLower.includes('fore'))) bones.r_shoulder = n;
-                        if (bName === 'mixamorig6RightForeArm' || bLower.includes('rightforearm')) bones.r_elbow = n;
-                        if (bName === 'mixamorig6RightHand' || (bLower.includes('righthand') && !match)) bones.r_wrist = n;
+                        // === ΑΚΡΙΒΗΣ ΑΝΑΓΝΩΡΙΣΗ ΚΟΚΚΑΛΩΝ ΒΑΣΕΙ ΤΗΣ ΛΙΣΤΑΣ ΠΟΥ ΕΣΤΕΙΛΕΣ ===
+                        if (bName === 'mixamorig6RightArm' || bName === 'RightArm' || bName.endsWith('RightArm')) bones.r_shoulder = n;
+                        if (bName === 'mixamorig6RightForeArm' || bName === 'RightForeArm' || bName.endsWith('RightForeArm')) bones.r_elbow = n;
+                        if (bName === 'mixamorig6RightHand' || bName === 'RightHand' || bName.endsWith('RightHand')) bones.r_wrist = n;
 
-                        // Αριστερό Χέρι
-                        if (bName === 'mixamorig6LeftArm' || (bLower.includes('leftarm') && !bLower.includes('fore'))) bones.l_shoulder = n;
-                        if (bName === 'mixamorig6LeftForeArm' || bLower.includes('leftforearm')) bones.l_elbow = n;
-                        if (bName === 'mixamorig6LeftHand' || (bLower.includes('lefthand') && !match)) bones.l_wrist = n;
-                        
+                        if (bName === 'mixamorig6LeftArm' || bName === 'LeftArm' || bName.endsWith('LeftArm')) bones.l_shoulder = n;
+                        if (bName === 'mixamorig6LeftForeArm' || bName === 'LeftForeArm' || bName.endsWith('LeftForeArm')) bones.l_elbow = n;
+                        if (bName === 'mixamorig6LeftHand' || bName === 'LeftHand' || bName.endsWith('LeftHand')) bones.l_wrist = n;
+
                         // Δάχτυλα
+                        const match = bLower.match(/(thumb|index|middle|ring|pinky)(\d)/);
                         if (match) {
                             if (bLower.includes('right') || bLower.includes('.r') || bLower.includes('_r')) {
                                 bones.r_joints[match[0]] = n;
@@ -159,18 +147,18 @@
                     resetPose(0.1);
                     if (bones.jaw) bones.jaw.rotation.x = deg(90);
                     
-                    if (bones.r_shoulder) {
-                        document.getElementById('subtitle').innerText = "Rhea: Σύστημα Έτοιμο!";
+                    // Ενημέρωση ότι συνδέθηκαν τα άκρα!
+                    if(bones.r_shoulder) {
+                        document.getElementById('subtitle').innerText = "Rhea: Έτοιμη!";
                     } else {
-                        document.getElementById('subtitle').innerText = "Rhea: Σφάλμα (Δεν βρέθηκαν τα κόκκαλα)";
+                        document.getElementById('subtitle').innerText = "Rhea: Πρόβλημα στα άκρα.";
                     }
                 }, 400);
             });
         }
 
         function resetPose(speed = 0.5) {
-            if (!bones.r_shoulder) return;
-            gsap.to(bones.r_shoulder.rotation, { x: deg(basePose.x), y: deg(basePose.y), z: deg(basePose.z), duration: speed });
+            if (bones.r_shoulder) gsap.to(bones.r_shoulder.rotation, { x: deg(basePose.x), y: deg(basePose.y), z: deg(basePose.z), duration: speed });
             if (bones.l_shoulder) gsap.to(bones.l_shoulder.rotation, { x: deg(basePose.x), y: deg(-basePose.y), z: deg(-basePose.z), duration: speed });
             [bones.r_elbow, bones.l_elbow, bones.r_wrist, bones.l_wrist].forEach(b => { if(b) gsap.to(b.rotation, { x: 0, y: 0, z: 0, duration: speed }); });
             bones.r_fingers.concat(bones.l_fingers).forEach(f => gsap.to(f.rotation, { x:0, y:0, z:0, duration: speed }));
@@ -269,13 +257,12 @@
 
                 setTimeout(() => {
                     const indexBones = [bones.r_joints['index1'], bones.r_joints['index2'], bones.r_joints['index3']].filter(b=>b);
-                    if (indexBones.length > 0) {
+                    if(indexBones.length > 0) {
                         const flick = gsap.timeline({ repeat: 1, onComplete: finalize_gesture });
                         flick.to(indexBones.map(b=>b.rotation), { x: deg(60), duration: 0.15, ease: "power1.inOut" })
                              .to(indexBones.map(b=>b.rotation), { x: 0, duration: 0.15, ease: "power1.inOut" });
                     } else { finalize_gesture(); }
                 }, 400);
-
             }, 600);
         }
 
@@ -343,7 +330,7 @@
             }, 600);
         }
 
-        // --- ΦΩΝΗΤΙΚΟΣ ΕΛΕΓΧΟΣ ---
+        // --- ΦΩΝΗΤΙΚΟΣ ΕΛΕΓΧΟΣ (FIX ΓΙΑ ΚΙΝΗΤΑ - ΑΥΤΟΜΑΤΗ ΡΟΗ) ---
         const micBtn = document.getElementById('mic-btn');
         const subtitle = document.getElementById('subtitle');
         let recognition = null;
@@ -352,15 +339,12 @@
         if ('webkitSpeechRecognition' in window) {
             recognition = new webkitSpeechRecognition();
             recognition.lang = 'el-GR';
-            recognition.continuous = true;
-            recognition.interimResults = true; 
+            // Το βάζουμε false για να "στέλνει" τη λέξη αμέσως μόλις σταματάς να μιλάς
+            recognition.continuous = false; 
+            recognition.interimResults = false; 
 
             recognition.onresult = (event) => {
-                let text = "";
-                for (let i = event.resultIndex; i < event.results.length; ++i) {
-                    text += event.results[i][0].transcript;
-                }
-                text = text.toLowerCase().trim();
+                const text = event.results[0][0].transcript.toLowerCase().trim();
                 subtitle.innerText = "Είπες: " + text;
 
                 let bestMatch = null;
@@ -385,14 +369,9 @@
                 }
 
                 if (bestMatch) {
-                    const now = Date.now();
-                    if (!(bestMatch === lastQueuedGesture && (now - lastQueuedTime < 3000))) {
-                        lastQueuedGesture = bestMatch;
-                        lastQueuedTime = now;
-                        enqueueGesture(bestMatch);
-                    }
+                    enqueueGesture(bestMatch);
                 } else {
-                    speakWord(text); // Lip sync για οποιαδήποτε άλλη λέξη
+                    speakWord(text);
                 }
             };
             
@@ -404,6 +383,7 @@
                 }
             };
             
+            // Μόλις τελειώσει μια φράση, ξανανοίγει αμέσως μόνο του!
             recognition.onend = () => { 
                 if (isListening) {
                     try { recognition.start(); } catch(e) {}
@@ -421,7 +401,7 @@
             } else {
                 isListening = false;
                 recognition.stop();
-                 micBtn.innerText = "🎙️ Ενεργοποίηση";
+                micBtn.innerText = "🎙️ Ενεργοποίηση";
                 micBtn.classList.remove('listening');
                 subtitle.innerText = "Μικρόφωνο Κλειστό";
             }
