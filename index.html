@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Web Avatar - 1Final Custom Gestures v14</title>
+    <title>Web Avatar - Final Custom Gestures v15</title>
     <style>
         body { margin: 0; overflow: hidden; background-color: #f0e6dc; font-family: 'Segoe UI', sans-serif; }
         #canvas-container { width: 100vw; height: 100vh; display: block; }
@@ -69,7 +69,7 @@
         let currentModel = null, bones = {}, is_busy = false;
         const deg = (d) => d * (Math.PI / 180);
         
-        // Η Α-Pose από τον κώδικα που δούλευε καλά στα άκρα
+        // Η Α-Pose
         const basePose = { x: 54, y: 30, z: 17 };
         const VOWEL_OPEN = { 'α': 115, 'ε': 105, 'η': 105, 'ι': 100, 'ο': 110, 'υ': 100, 'ω': 110 };
 
@@ -119,10 +119,8 @@
                         const bName = n.name;
                         const bLower = bName.toLowerCase();
                         
-                        // Jaw (Στόμα)
                         if (bLower.includes('jaw')) bones.jaw = n;
                         
-                        // === ΑΚΡΙΒΗΣ ΑΝΑΓΝΩΡΙΣΗ ΚΟΚΚΑΛΩΝ ΒΑΣΕΙ MIXAMORIG6 ===
                         if (bName === 'mixamorig6RightArm') bones.r_shoulder = n;
                         if (bName === 'mixamorig6RightForeArm') bones.r_elbow = n;
                         if (bName === 'mixamorig6RightHand') bones.r_wrist = n;
@@ -131,7 +129,6 @@
                         if (bName === 'mixamorig6LeftForeArm') bones.l_elbow = n;
                         if (bName === 'mixamorig6LeftHand') bones.l_wrist = n;
 
-                        // Δάχτυλα
                         const match = bLower.match(/(thumb|index|middle|ring|pinky)(\d)/);
                         if (match) {
                             if (bLower.includes('right')) {
@@ -254,7 +251,7 @@
             if(bones.r_joints['pinky1']) gsap.to(bones.r_joints['pinky1'].rotation, {x: deg(52), y: deg(-31), z: deg(-8), duration: 0.4});
 
             setTimeout(() => {
-                // Η Καλημέρα 2η φάση
+                // Η Καλημέρα 2η φάση (τα ακριβή σου νούμερα)
                 if(bones.r_shoulder) gsap.to(bones.r_shoulder.rotation, { x: deg(41), y: deg(-65), z: deg(-33), duration: 0.8 });
                 if(bones.r_elbow) gsap.to(bones.r_elbow.rotation, { x: deg(-161), y: deg(1), z: deg(-7), duration: 0.8 });
                 if(bones.r_wrist) gsap.to(bones.r_wrist.rotation, { x: deg(7), y: deg(0), z: deg(-2), duration: 0.8 }); 
@@ -276,6 +273,7 @@
         function gesture_onoma() {
             is_busy = true; speakWord("Όνομα", 1.2);
             
+            // Το Όνομα 1η φάση (τα ακριβή σου νούμερα)
             if(bones.r_shoulder) gsap.to(bones.r_shoulder.rotation, { x: deg(50), y: deg(-15), z: deg(-70), duration: 0.5 });
             if(bones.r_elbow) gsap.to(bones.r_elbow.rotation, { x: deg(-9), y: deg(32), z: deg(-10), duration: 0.5 });
             if(bones.r_wrist) gsap.to(bones.r_wrist.rotation, { x: 0, y: 0, z: 0, duration: 0.5 });
@@ -283,6 +281,7 @@
             customKalimeraPart2('r', 0.3); 
 
             setTimeout(() => {
+                // ΦΑΣΗ 2: Επαναφορά στην παλιά κίνηση του 'Όνομα'
                 if(bones.r_shoulder) gsap.to(bones.r_shoulder.rotation, { x: deg(25), y: deg(7), z: deg(-51), duration: 0.5 });
                 if(bones.r_elbow) gsap.to(bones.r_elbow.rotation, { x: deg(59), y: deg(1), z: deg(-48), duration: 0.5 });
                 if(bones.l_shoulder) gsap.to(bones.l_shoulder.rotation, { x: deg(25), y: deg(-7), z: deg(51), duration: 0.5 });
@@ -314,22 +313,26 @@
 
         function gesture_mesimeri() {
             is_busy = true; speakWord("Μεσημέρι", 1.5);
+            
+            // Φάση 1 (κλειδωμένη)
             if(bones.r_shoulder) gsap.to(bones.r_shoulder.rotation, { x: deg(70), y: deg(14), z: deg(-17), duration: 0.5 });
             if(bones.r_elbow) gsap.to(bones.r_elbow.rotation, { x: deg(108), y: deg(-31), z: deg(-69), duration: 0.5 });
+            if(bones.r_wrist) gsap.to(bones.r_wrist.rotation, { x: 0, y: 0, z: 0, duration: 0.5 });
+
             setTimeout(() => {
                 
-                // Επαναφορά στους αριθμούς της προηγούμενης παρτίδας που ζήτησες
-                if(bones.r_shoulder) gsap.to(bones.r_shoulder.rotation, { x: deg(61), y: deg(-10), z: deg(-43), duration: 0.5 });
-                if(bones.r_elbow) gsap.to(bones.r_elbow.rotation, { x: deg(29), y: deg(-28), z: deg(-83), duration: 0.5 });
+                // Φάση 2 (ΑΚΡΙΒΩΣ τα ΝΕΑ νούμερα που έδωσες, χωρίς παρεμβάσεις)
+                if(bones.r_shoulder) gsap.to(bones.r_shoulder.rotation, { x: deg(60), y: deg(-10), z: deg(-43), duration: 0.5 });
+                if(bones.r_elbow) gsap.to(bones.r_elbow.rotation, { x: deg(43), y: deg(-38), z: deg(-83), duration: 0.5 });
                 
                 if(bones.r_wrist) {
-                    gsap.to(bones.r_wrist.rotation, { x: deg(-41), y: deg(-17), z: deg(-50), duration: 0.5 });
+                    gsap.to(bones.r_wrist.rotation, { x: deg(-43), y: deg(-21), z: deg(-68), duration: 0.5 });
                     
-                    // Κίνηση (wagging) όπως ακριβώς ήταν στον τελευταίο κώδικα (εναλλαγή +- 25 μοίρες στον Y)
+                    // Κίνηση "Γένια" (Μέσα-Έξω) βασισμένη στον άξονα Z
                     setTimeout(() => {
                         const tl_v = gsap.timeline({ repeat: 2, onComplete: finalize_gesture });
-                        tl_v.to(bones.r_wrist.rotation, { y: deg(-17 + 25), duration: 0.4, ease: "sine.inOut" })
-                            .to(bones.r_wrist.rotation, { y: deg(-17 - 25), duration: 0.4, ease: "sine.inOut" });
+                        tl_v.to(bones.r_wrist.rotation, { z: deg(-68 + 25), duration: 0.4, ease: "sine.inOut" })
+                            .to(bones.r_wrist.rotation, { z: deg(-68 - 25), duration: 0.4, ease: "sine.inOut" });
                     }, 500);
                 } else { finalize_gesture(); }
             }, 600);
