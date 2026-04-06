@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Web Avatar - 1Final Custom Gestures v19 (Perfect Forearm)</title>
+    <title>Web Avatar - Final Custom Gestures v15 (Perfect Wrist & Forearm)</title>
     <style>
         body { margin: 0; overflow: hidden; background-color: #f0e6dc; font-family: 'Segoe UI', sans-serif; }
         #canvas-container { width: 100vw; height: 100vh; display: block; }
@@ -240,7 +240,6 @@
 
         function gesture_kalimera() {
             is_busy = true; speakWord("Καλημέρα", 1.5);
-            // ΦΑΣΗ 1
             if(bones.r_shoulder) gsap.to(bones.r_shoulder.rotation, { x: deg(70), y: deg(14), z: deg(-17), duration: 0.5 });
             if(bones.r_elbow) gsap.to(bones.r_elbow.rotation, { x: deg(108), y: deg(-31), z: deg(-69), duration: 0.5 });
             if(bones.r_wrist) gsap.to(bones.r_wrist.rotation, { x: 0, y: 0, z: 0, duration: 0.5 });
@@ -252,24 +251,25 @@
             if(bones.r_joints['pinky1']) gsap.to(bones.r_joints['pinky1'].rotation, {x: deg(52), y: deg(-31), z: deg(-8), duration: 0.4});
 
             setTimeout(() => {
-                // ΦΑΣΗ 2
+                // Η ΛΥΣΗ ΓΙΑ ΤΟ "ΚΑΛΗΜΕΡΑ": 
+                // 1. Κρατάμε τον ώμο εντελώς σταθερό στην ίδια θέση με την 1η φάση (70, 14, -17).
+                if(bones.r_shoulder) gsap.to(bones.r_shoulder.rotation, { x: deg(70), y: deg(14), z: deg(-17), duration: 0.3 });
                 
-                // Ο Ώμος προσαρμόζεται κανονικά
-                if(bones.r_shoulder) gsap.to(bones.r_shoulder.rotation, { x: deg(41), y: deg(-65), z: deg(-33), duration: 0.8 });
-                
-                // ΔΙΟΡΘΩΣΗ ΓΙΑ ΤΟ ΑΝΤΙΒΡΑΧΙΟ:
-                // Κρατάμε το χέρι ΟΡΘΙΟ (x: 108, z: -69 όπως στην 1η φάση) για να μην πέσει κάτω
-                // και κάνουμε μια ελαφριά περιστροφή (y) μαζί με τον καρπό.
-                if(bones.r_elbow) gsap.to(bones.r_elbow.rotation, { x: deg(108), y: deg(-90), z: deg(-69), duration: 0.8 });
-                
-                // Ο Καρπός γυρίζει με το timeline (όπως σου άρεσε) για να καθρεφτίσει σωστά
-                if(bones.r_wrist) {
-                    const wristTurn = gsap.timeline();
-                    wristTurn.to(bones.r_wrist.rotation, { x: 0, y: deg(-80), z: 0, duration: 0.4, ease: "none" })
-                             .to(bones.r_wrist.rotation, { x: 0, y: deg(-160), z: 0, duration: 0.4, ease: "power1.out" });
+                // 2. Κρατάμε τον αγκώνα ΟΡΘΙΟ (X: 108, Z: -69) και περιστρέφουμε μόνο τον άξονα Y (supination).
+                if(bones.r_elbow) {
+                    const elbowTurn = gsap.timeline();
+                    elbowTurn.to(bones.r_elbow.rotation, { x: deg(108), y: deg(-60), z: deg(-69), duration: 0.15, ease: "none" })
+                             .to(bones.r_elbow.rotation, { x: deg(108), y: deg(-90), z: deg(-69), duration: 0.15, ease: "power1.out" });
                 }
 
-                customKalimeraPart2('r', 0.8); 
+                // 3. Περιστρέφουμε ταυτόχρονα και τον καρπό για να ολοκληρωθεί αρμονικά η κίνηση.
+                if(bones.r_wrist) {
+                    const wristTurn = gsap.timeline();
+                    wristTurn.to(bones.r_wrist.rotation, { x: 0, y: deg(-45), z: 0, duration: 0.15, ease: "none" })
+                             .to(bones.r_wrist.rotation, { x: 0, y: deg(-90), z: 0, duration: 0.15, ease: "power1.out" });
+                }
+
+                customKalimeraPart2('r', 0.3); 
 
                 setTimeout(() => {
                     const indexBones = [bones.r_joints['index1'], bones.r_joints['index2'], bones.r_joints['index3']].filter(b=>b);
@@ -278,7 +278,7 @@
                         flick.to(indexBones.map(b=>b.rotation), { x: deg(60), duration: 0.15, ease: "power1.inOut" })
                              .to(indexBones.map(b=>b.rotation), { x: 0, duration: 0.15, ease: "power1.inOut" });
                     } else { finalize_gesture(); }
-                }, 900); 
+                }, 400);
 
             }, 600);
         }
@@ -286,6 +286,7 @@
         function gesture_onoma() {
             is_busy = true; speakWord("Όνομα", 1.2);
             
+            // Το Όνομα 1η φάση
             if(bones.r_shoulder) gsap.to(bones.r_shoulder.rotation, { x: deg(50), y: deg(-15), z: deg(-70), duration: 0.5 });
             if(bones.r_elbow) gsap.to(bones.r_elbow.rotation, { x: deg(-9), y: deg(32), z: deg(-10), duration: 0.5 });
             if(bones.r_wrist) gsap.to(bones.r_wrist.rotation, { x: 0, y: 0, z: 0, duration: 0.5 });
@@ -293,6 +294,7 @@
             customKalimeraPart2('r', 0.3); 
 
             setTimeout(() => {
+                // ΦΑΣΗ 2
                 if(bones.r_shoulder) gsap.to(bones.r_shoulder.rotation, { x: deg(25), y: deg(7), z: deg(-51), duration: 0.5 });
                 if(bones.r_elbow) gsap.to(bones.r_elbow.rotation, { x: deg(59), y: deg(1), z: deg(-48), duration: 0.5 });
                 if(bones.l_shoulder) gsap.to(bones.l_shoulder.rotation, { x: deg(25), y: deg(-7), z: deg(51), duration: 0.5 });
@@ -325,11 +327,13 @@
         function gesture_mesimeri() {
             is_busy = true; speakWord("Μεσημέρι", 1.5);
             
+            // Φάση 1
             if(bones.r_shoulder) gsap.to(bones.r_shoulder.rotation, { x: deg(70), y: deg(14), z: deg(-17), duration: 0.5 });
             if(bones.r_elbow) gsap.to(bones.r_elbow.rotation, { x: deg(108), y: deg(-31), z: deg(-69), duration: 0.5 });
             if(bones.r_wrist) gsap.to(bones.r_wrist.rotation, { x: 0, y: 0, z: 0, duration: 0.5 });
 
             setTimeout(() => {
+                // Φάση 2
                 if(bones.r_shoulder) gsap.to(bones.r_shoulder.rotation, { x: deg(60), y: deg(-10), z: deg(-43), duration: 0.5 });
                 if(bones.r_elbow) gsap.to(bones.r_elbow.rotation, { x: deg(43), y: deg(-38), z: deg(-83), duration: 0.5 });
                 
