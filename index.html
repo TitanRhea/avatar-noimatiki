@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Web Avatar - Final Custom Gestures</title>
+    <title>Web Avatar - Final Corrected Sign Language v11</title>
     <style>
         body { margin: 0; overflow: hidden; background-color: #f0e6dc; font-family: 'Segoe UI', sans-serif; }
         #canvas-container { width: 100vw; height: 100vh; display: block; }
@@ -219,7 +219,7 @@
             if(j['index3']) gsap.to(j['index3'].rotation, {x: 0, y: 0, z: 0, duration: duration});
         }
 
-        // --- ΚΙΝΗΣΕΙΣ ---
+        // === ΚΙΝΗΣΕΙΣ ===
 
         function gesture_efcharisto() {
             is_busy = true; speakWord("Ευχαριστώ", 1.8);
@@ -254,13 +254,16 @@
             if(bones.r_joints['pinky1']) gsap.to(bones.r_joints['pinky1'].rotation, {x: deg(52), y: deg(-31), z: deg(-8), duration: 0.4});
 
             setTimeout(() => {
-                // Ενσωμάτωση: Τα ακριβή νούμερα που βρήκες για τη 2η φάση
-                if(bones.r_shoulder) gsap.to(bones.r_shoulder.rotation, { x: deg(66), y: deg(-11), z: deg(-33), duration: 0.3 });
-                if(bones.r_elbow) gsap.to(bones.r_elbow.rotation, { x: deg(-134), y: deg(48), z: deg(-47), duration: 0.3 });
-                if(bones.r_wrist) gsap.to(bones.r_wrist.rotation, { x: deg(7), y: deg(0), z: deg(-2), duration: 0.3 }); 
+                // ΔΙΟΡΘΩΣΗ: Επιβράδυνση της εναλλαγής (0.3 -> 0.8) για να φαίνεται το γύρισμα
+                if(bones.r_shoulder) gsap.to(bones.r_shoulder.rotation, { x: deg(66), y: deg(-11), z: deg(-33), duration: 0.8 });
+                if(bones.r_elbow) gsap.to(bones.r_elbow.rotation, { x: deg(-134), y: deg(48), z: deg(-47), duration: 0.8 });
+                
+                // Ο καρπός γυρίζει κατά 180 μοίρες x για να βλέπει η Rhea την παλάμη
+                if(bones.r_wrist) gsap.to(bones.r_wrist.rotation, { x: deg(180), y: 0, z: 0, duration: 0.8 }); 
 
-                customKalimeraPart2('r', 0.3); 
+                customKalimeraPart2('r', 0.8); 
 
+                // Καθυστέρηση του τινάγματος για να ολοκληρωθεί το γύρισμα
                 setTimeout(() => {
                     const indexBones = [bones.r_joints['index1'], bones.r_joints['index2'], bones.r_joints['index3']].filter(b=>b);
                     if (indexBones.length > 0) {
@@ -268,7 +271,7 @@
                         flick.to(indexBones.map(b=>b.rotation), { x: deg(60), duration: 0.15, ease: "power1.inOut" })
                              .to(indexBones.map(b=>b.rotation), { x: 0, duration: 0.15, ease: "power1.inOut" });
                     } else { finalize_gesture(); }
-                }, 400);
+                }, 900); // 900ms > 800ms duration
 
             }, 600);
         }
@@ -320,18 +323,21 @@
             if(bones.r_elbow) gsap.to(bones.r_elbow.rotation, { x: deg(108), y: deg(-31), z: deg(-69), duration: 0.5 });
             setTimeout(() => {
                 
-                // Ενσωμάτωση: Τα ακριβή νούμερα που βρήκες για τη 2η φάση
-                if(bones.r_shoulder) gsap.to(bones.r_shoulder.rotation, { x: deg(61), y: deg(-10), z: deg(-43), duration: 0.5 });
-                if(bones.r_elbow) gsap.to(bones.r_elbow.rotation, { x: deg(29), y: deg(-28), z: deg(-83), duration: 0.5 });
+                // ΔΙΟΡΘΩΣΗ: Ρύθμιση Ώμου/Αγκώνα για να έρθει το χέρι ΠΟΛΥ ΚΟΝΤΑ στο πηγούνι
+                // Original X:61 -> 75 (up), Original Y:-10 -> -25 (inward), Original Z:-43
+                if(bones.r_shoulder) gsap.to(bones.r_shoulder.rotation, { x: deg(75), y: deg(-25), z: deg(-43), duration: 0.5 });
+                // Original X:29 -> 55 (bend more)
+                if(bones.r_elbow) gsap.to(bones.r_elbow.rotation, { x: deg(55), y: deg(-28), z: deg(-83), duration: 0.5 });
                 
                 if(bones.r_wrist) {
-                    gsap.to(bones.r_wrist.rotation, { x: deg(-41), y: deg(-17), z: deg(-50), duration: 0.5 });
+                    // Διατήρηση της κάθετης πόζας ("Γένια")
+                    gsap.to(bones.r_wrist.rotation, { x: deg(90), y: 0, z: deg(180), duration: 0.5 });
                     
-                    // Κίνηση "Γένια" (wagging) βασισμένη στις νέες μοίρες που έδωσες
+                    // Κίνηση "Γένια" (wagging)
                     setTimeout(() => {
                         const tl_v = gsap.timeline({ repeat: 2, onComplete: finalize_gesture });
-                        tl_v.to(bones.r_wrist.rotation, { z: deg(-20), duration: 0.4, ease: "sine.inOut" })
-                            .to(bones.r_wrist.rotation, { z: deg(-80), duration: 0.4, ease: "sine.inOut" });
+                        tl_v.to(bones.r_wrist.rotation, { y: deg(30), duration: 0.4, ease: "sine.inOut" })
+                            .to(bones.r_wrist.rotation, { y: deg(-30), duration: 0.4, ease: "sine.inOut" });
                     }, 500);
                 } else { finalize_gesture(); }
             }, 600);
