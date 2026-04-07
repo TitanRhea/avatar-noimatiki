@@ -325,7 +325,7 @@
             recognition.onend = () => { 
                 if (isListening) {
                     global_history = subtitle.innerText.replace("Είπες: ", "") + " ";
-                    setTimeout(() => { try { recognition.start(); } catch(e) {} }, 100);
+                    //setTimeout(() => { try { recognition.start(); } catch(e) {} }, 100);
                 } 
             };
         }
