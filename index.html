@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Web Avatar - Final Flow v33 (Zero Delays, Perfect Queue)</title>
+    <title>Web Avatar - Final Flow (Live Text & Smooth Fingers)</title>
     <style>
         body { margin: 0; overflow: hidden; background-color: #f0e6dc; font-family: 'Segoe UI', sans-serif; }
         #canvas-container { width: 100vw; height: 100vh; display: block; }
@@ -79,7 +79,7 @@
 
         function enqueueGesture(gestureName) {
             gestureQueue.push(gestureName);
-            clearTimeout(idleTimer); // Αν μπει λέξη, ακυρώνεται η επιστροφή σε A-Pose
+            clearTimeout(idleTimer); 
             if (!is_busy) {
                 processQueue();
             }
@@ -165,6 +165,13 @@
             bones.r_fingers.concat(bones.l_fingers).forEach(f => gsap.to(f.rotation, { x:0, y:0, z:0, duration: speed }));
         }
 
+        // --- ΝΕΟ: Καθαρισμός Δαχτύλων για ομαλές μεταβάσεις ---
+        function clearFingers(speed = 0.4) {
+            if (bones.r_fingers) {
+                bones.r_fingers.concat(bones.l_fingers).forEach(f => gsap.to(f.rotation, { x:0, y:0, z:0, duration: speed }));
+            }
+        }
+
         function speakWord(word, total_time = 1.5) {
             if (!bones.jaw) return;
             const vowels = [...word.toLowerCase()].filter(c => VOWEL_OPEN[c]);
@@ -176,22 +183,19 @@
             });
         }
 
-        // --- Η ΝΕΑ ΛΟΓΙΚΗ ΕΠΑΝΑΦΟΡΑΣ ΜΕ ΤΗ ΣΩΣΤΗ ΡΟΗ ---
         function finalize_gesture() { 
             if (gestureQueue.length > 0) {
-                // Υπάρχει λέξη στην ουρά!
-                // Κρατάει την τελευταία πόζα για 0.2s και πάει κατευθείαν στην επόμενη, ΧΩΡΙΣ ΚΑΝΕΝΑ resetPose.
+                // Υπάρχει λέξη στην ουρά. Κρατάει πόζα 0.2s και πάει κατευθείαν στην επόμενη!
                 setTimeout(() => { 
                     is_busy = false; 
                     processQueue(); 
                 }, 200); 
             } else {
-                // Η ουρά άδειασε. 
                 is_busy = false; 
-                // Ξεκινάει ο μετρητής ησυχίας (0.5s).
+                // Περιμένει 0.5s ησυχίας για να κατεβάσει τα χέρια.
                 idleTimer = setTimeout(() => {
                     if (gestureQueue.length === 0 && !is_busy) {
-                        resetPose(0.5); // Τώρα κατεβάζει τα χέρια στην A-Pose.
+                        resetPose(0.5); 
                     }
                 }, 500); 
             }
@@ -231,10 +235,11 @@
             if(j['index3']) gsap.to(j['index3'].rotation, {x: 0, y: 0, z: 0, duration: duration});
         }
 
-        // === ΚΙΝΗΣΕΙΣ (ΑΠΟΛΥΤΑ ΚΛΕΙΔΩΜΕΝΕΣ ΓΩΝΙΕΣ & LIP SYNC) ===
+        // === ΚΙΝΗΣΕΙΣ ===
 
         function gesture_efcharisto() {
             is_busy = true; 
+            clearFingers(); // Ισιώνει τα δάχτυλα αν έρχεται από άλλη λέξη
             
             if(bones.jaw) {
                 const jawTl = gsap.timeline();
@@ -257,7 +262,7 @@
                 pulse.to({}, { duration: 0.1, onStart: () => { customFist(0.1); } })
                      .to({}, { duration: 0.15 }) 
                      .to({}, { duration: 0.1, onStart: () => { 
-                         bones.r_fingers.concat(bones.l_fingers).forEach(f => gsap.to(f.rotation, { x:0, y:0, z:0, duration: 0.1 }));
+                         clearFingers(0.1);
                      } })
                      .to({}, { duration: 0.15 }); 
             }, 600);
@@ -316,7 +321,8 @@
 
         function gesture_onoma() {
             is_busy = true; 
-            
+            clearFingers(); // Ισιώνει τα δάχτυλα αν έρχεται από άλλη λέξη
+
             if(bones.jaw) {
                 const jawTl = gsap.timeline();
                 jawTl.to(bones.jaw.rotation, { x: deg(108), duration: 0.3, ease: "sine.inOut" }) 
@@ -363,6 +369,7 @@
 
         function gesture_mesimeri() {
             is_busy = true; 
+            clearFingers(); // Ισιώνει τα δάχτυλα αν έρχεται από το "Καλημέρα"
             
             if(bones.jaw) {
                 const jawTl = gsap.timeline();
@@ -395,6 +402,7 @@
 
         function gesture_geia() {
             is_busy = true; 
+            clearFingers(); // Ισιώνει τα δάχτυλα
             
             if(bones.jaw) {
                 const jawTl = gsap.timeline();
@@ -413,7 +421,7 @@
             }, 600);
         }
 
-        // --- ΑΣΤΑΜΑΤΗΤΟΣ ΦΩΝΗΤΙΚΟΣ ΕΛΕΓΧΟΣ ---
+        // --- ΑΣΤΑΜΑΤΗΤΟΣ ΦΩΝΗΤΙΚΟΣ ΕΛΕΓΧΟΣ (ΛΑΪΒ ΜΕΤΑΦΡΑΣΗ) ---
         const micBtn = document.getElementById('mic-btn');
         const subtitle = document.getElementById('subtitle');
         let recognition = null;
@@ -422,22 +430,31 @@
         if ('webkitSpeechRecognition' in window) {
             recognition = new webkitSpeechRecognition();
             recognition.lang = 'el-GR';
-            // Δεν κλείνει ποτέ. Διαβάζει ασταμάτητα!
             recognition.continuous = true; 
-            recognition.interimResults = false; 
+            
+            // ΝΕΟ: interimResults για να βλέπεις στην οθόνη ΛΑΪΒ τις λέξεις όσο μιλάς!
+            recognition.interimResults = true; 
 
             recognition.onresult = (event) => {
-                let newText = "";
-                // Το resultIndex μας φέρνει ΜΟΝΟ την καινούργια φράση που είπες, χωρίς να ξαναδιαβάζει τις παλιές!
+                let finalStr = "";
+                let interimStr = "";
+                
+                // Διαχωρίζουμε τις οριστικές λέξεις από αυτές που "μαντεύει" λάιβ ο Chrome
                 for (let i = event.resultIndex; i < event.results.length; ++i) {
                     if (event.results[i].isFinal) {
-                        newText += event.results[i][0].transcript.toLowerCase() + " ";
+                        finalStr += event.results[i][0].transcript.toLowerCase() + " ";
+                    } else {
+                        interimStr += event.results[i][0].transcript.toLowerCase() + " ";
                     }
                 }
-                newText = newText.trim();
-                if (!newText) return;
 
-                subtitle.innerText = "Είπες: " + newText;
+                // Εμφανίζουμε στην οθόνη και τα δύο για να μην νιώθεις ότι κόλλησε
+                if (finalStr || interimStr) {
+                    subtitle.innerText = "Είπες: " + finalStr + interimStr;
+                }
+
+                finalStr = finalStr.trim();
+                if (!finalStr) return; // Επεξεργαζόμαστε μόνο τις λέξεις που οριστικοποιήθηκαν
 
                 const keywords = {
                     'efcharisto': ["ευχαριστώ", "ευχαριστω", "ευχαριστώ πολύ", "ευχαριστω πολυ"],
@@ -451,10 +468,10 @@
                 
                 for (const [gesture, triggerWords] of Object.entries(keywords)) {
                     triggerWords.forEach(word => {
-                        let idx = newText.indexOf(word);
+                        let idx = finalStr.indexOf(word);
                         while (idx !== -1) {
                             matches.push({ gesture: gesture, index: idx, length: word.length });
-                            idx = newText.indexOf(word, idx + word.length);
+                            idx = finalStr.indexOf(word, idx + word.length);
                         }
                     });
                 }
@@ -479,7 +496,7 @@
                         enqueueGesture(match.gesture);
                     });
                 } else {
-                    speakWord(newText); 
+                    speakWord(finalStr); 
                 }
             };
             
@@ -491,9 +508,12 @@
                 }
             };
             
+            // Αν ο Chrome προσπαθήσει να κλείσει το μικρόφωνο από μόνος του, το ξυπνάμε δυναμικά!
             recognition.onend = () => { 
                 if (isListening) {
-                    try { recognition.start(); } catch(e) {}
+                    setTimeout(() => {
+                        try { recognition.start(); } catch(e) {}
+                    }, 50);
                 } 
             };
         }
