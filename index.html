@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Web Avatar - Final Flow v27 (Continuous Fluent Gestures)</title>
+    <title>Web Avatar - Final Flow (Continuous Fluent Gestures with Hold Timer)</title>
     <style>
         body { margin: 0; overflow: hidden; background-color: #f0e6dc; font-family: 'Segoe UI', sans-serif; }
         #canvas-container { width: 100vw; height: 100vh; display: block; }
@@ -73,14 +73,14 @@
         const basePose = { x: 54, y: 30, z: 17 };
         const VOWEL_OPEN = { 'α': 115, 'ε': 105, 'η': 105, 'ι': 100, 'ο': 110, 'υ': 100, 'ω': 110 };
 
-        // === ΣΥΣΤΗΜΑ ΟΥΡΑΣ ===
+        // === ΕΞΥΠΝΟ ΣΥΣΤΗΜΑ ΟΥΡΑΣ (ΝΕΟ) ===
         let gestureQueue = [];
-        let lastQueuedGesture = "";
-        let lastQueuedTime = 0;
+        let resetTimer = null; // Το χρονόμετρο που κρατάει τα χέρια ψηλά
 
         function enqueueGesture(gestureName) {
             gestureQueue.push(gestureName);
             if (!is_busy) {
+                clearTimeout(resetTimer); // Ακυρώνουμε την επιστροφή στην A-Pose αν έρθει νέα λέξη!
                 processQueue();
             }
         }
@@ -88,6 +88,8 @@
         function processQueue() {
             if (is_busy || gestureQueue.length === 0) return;
             
+            clearTimeout(resetTimer); // Για απόλυτη σιγουριά ότι δεν θα πέσουν τα χέρια
+
             let nextGesture = gestureQueue.shift();
             if (nextGesture === 'efcharisto') gesture_efcharisto();
             else if (nextGesture === 'kalimera') gesture_kalimera();
@@ -163,6 +165,7 @@
             bones.r_fingers.concat(bones.l_fingers).forEach(f => gsap.to(f.rotation, { x:0, y:0, z:0, duration: speed }));
         }
 
+        // Αυτή η συνάρτηση μένει μόνο για τις "άγνωστες" λέξεις (fallback lip sync)
         function speakWord(word, total_time = 1.5) {
             if (!bones.jaw) return;
             const vowels = [...word.toLowerCase()].filter(c => VOWEL_OPEN[c]);
@@ -174,21 +177,24 @@
             });
         }
 
-        // Η ΝΕΑ ΕΞΥΠΝΗ ΡΟΗ: Αν υπάρχει άλλη λέξη, δεν κατεβάζει τα χέρια, πάει απευθείας στην επόμενη!
         function finalize_gesture() { 
             if (gestureQueue.length > 0) {
-                // Έχει κι άλλη λέξη: Κάνει μια μικρή φυσική παύση 200ms και συνεχίζει
-                setTimeout(() => {
-                    is_busy = false;
-                    processQueue();
-                }, 200);
-            } else {
-                // Δεν έχει άλλη λέξη: Κατεβάζει τα χέρια (ξεκούραση)
-                resetPose(); 
+                // Αν υπάρχει άλλη λέξη στην ουρά, πηγαίνει σε αυτή χωρίς καμία καθυστέρηση και χωρίς A-Pose
                 setTimeout(() => { 
                     is_busy = false; 
                     processQueue(); 
-                }, 600); 
+                }, 100); 
+            } else {
+                // Δεν υπάρχει άλλη λέξη έτοιμη. Απελευθερώνουμε το is_busy για να ακούσει.
+                is_busy = false; 
+                
+                // Και δίνουμε περιθώριο 1.5 δευτερόλεπτο "παγώνοντας" τα χέρια ψηλά.
+                // Αν δεν μιλήσεις μέσα σε αυτό το διάστημα, τότε ξεκουράζει τα χέρια (resetPose).
+                resetTimer = setTimeout(() => {
+                    if (gestureQueue.length === 0) {
+                        resetPose(); 
+                    }
+                }, 1500); 
             }
         }
 
