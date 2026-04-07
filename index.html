@@ -280,114 +280,10 @@
         }
 
         // === IMMORTAL MIC SYSTEM ===
-
-class ContinuousSpeechRecognition {
-  constructor({ lang = 'el-GR', onResult, onError } = {}) {
-    this.SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-
-    if (!this.SpeechRecognition) {
-      throw new Error('SpeechRecognition not supported in this browser');
-    }
-
-    this.recognition = new this.SpeechRecognition();
-    this.recognition.lang = lang;
-    this.recognition.continuous = true;
-    this.recognition.interimResults = true;
-    this.recognition.maxAlternatives = 1;
-
-    this.onResult = onResult;
-    this.onError = onError;
-
-    this.running = false;
-    this.shouldRestart = true;
-    this.restartDelay = 300;
-
-    this._bindEvents();
-  }
-
-  _bindEvents() {
-    this.recognition.onstart = () => {
-      this.running = true;
-      // console.log('🎤 started');
-    };
-
-    this.recognition.onend = () => {
-      this.running = false;
-
-      // 🔁 Auto-restart loop
-      if (this.shouldRestart) {
-        setTimeout(() => {
-          this._safeStart();
-        }, this.restartDelay);
-      }
-    };
-
-    this.recognition.onerror = (event) => {
-      // console.warn('Speech error:', event.error);
-
-      // 🚨 Handle fatal errors
-      if (event.error === 'not-allowed' || event.error === 'service-not-allowed') {
-        this.shouldRestart = false;
-      }
-
-      if (event.error === 'network') {
-        // small backoff for network issues
-        this.restartDelay = 1000;
-      }
-
-      this.onError?.(event);
-    };
-
-    this.recognition.onresult = (event) => {
-      let finalText = '';
-      let interimText = '';
-
-      for (let i = event.resultIndex; i < event.results.length; i++) {
-        const transcript = event.results[i][0].transcript;
-
-        if (event.results[i].isFinal) {
-          finalText += transcript + ' ';
-          this.recognition.abort();
-        } else {
-          interimText += transcript;
-        }
-      }
-
-      this.onResult?.({
-        final: finalText.trim(),
-        interim: interimText.trim()
-      });
-    };
-  }
-
-  _safeStart() {
-    if (this.running) return;
-
-    try {
-      this.recognition.start();
-    } catch (e) {
-      // ignore "already started"
-    }
-  }
-
-  start() {
-    this.shouldRestart = true;
-    this._safeStart();
-  }
-
-  stop() {
-    this.shouldRestart = false;
-    this.recognition.stop();
-  }
-}
-
-
-        
         const micBtn = document.getElementById('mic-btn');
         const subtitle = document.getElementById('subtitle');
-        
+        let recognition = null;
         let isListening = false;
-        /*let recognition = null;
         let session_buffer = "";
 
         if ('webkitSpeechRecognition' in window) {
@@ -398,17 +294,12 @@ class ContinuousSpeechRecognition {
 
             recognition.onresult = (event) => {
                 let current_chunk = "";
-                
-                console.log("Recognition result received:", event.results);
                 for (let i = event.resultIndex; i < event.results.length; ++i) {
                     current_chunk += event.results[i][0].transcript.toLowerCase() + " ";
-                    if (event.results[i].isFinal) {recognition.abort();}
                 }
                 
                 let full_view = global_history + current_chunk;
                 subtitle.innerText = "Είπες: " + full_view;
-                
-                console.log("Recognized Text:", full_view);
 
                 const keywords = {
                     'efcharisto': ["ευχαριστώ", "ευχαριστω"],
@@ -430,45 +321,20 @@ class ContinuousSpeechRecognition {
             };
             
             recognition.onend = () => { 
-                console.log("ON END CALLED !")
                 if (isListening) {
                     global_history = subtitle.innerText.replace("Είπες: ", "") + " ";
-
-                console.log("STARTING STOPPING")
-                    recognition.start();
-                    setTimeout(() => { recognition.start();}, 100);
+                    setTimeout(() => { try { recognition.start(); } catch(e) {} }, 100);
                 } 
             };
+        }
 
-            recognition.onerror = (event) => {
-                console.error("Σφάλμα:", event.error);
-            };
-        }*/
-
-        
-        const speech = new ContinuousSpeechRecognition({
-          lang: 'el-GR',
-          onResult: ({ final, interim }) => {
-            if (final) console.log('✅ Final:', final);
-            if (interim) console.log('…', interim);
-          },
-          onError: (e) => {
-            console.log('⚠️ Error:', e.error);
-          }
-        });
-        
         micBtn.onclick = () => {
-            console.log("BUTTON!! CLICKED!!", isListening)
             if (!isListening) {
-                isListening = true;
-                global_history = ""; processed_length = 0;
-                //recognition.start();
-                speech.start();
+                isListening = true; global_history = ""; processed_length = 0;
+                try { recognition.start(); } catch(e) {}
                 micBtn.innerText = "🛑 Κλείσιμο"; micBtn.classList.add('listening');
             } else {
-                isListening = false;
-                //recognition.stop();
-                speech.stop()
+                isListening = false; recognition.stop();
                 micBtn.innerText = "🎙️ Ενεργοποίηση"; micBtn.classList.remove('listening');
             }
         };
