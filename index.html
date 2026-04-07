@@ -326,6 +326,7 @@
             };
             
             recognition.onend = () => { 
+                console.log("ON END CALLED")
                 if (isListening) {
                     global_history = subtitle.innerText.replace("Είπες: ", "") + " ";
 
