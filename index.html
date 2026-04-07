@@ -294,6 +294,8 @@
 
             recognition.onresult = (event) => {
                 let current_chunk = "";
+                
+                console.log("Recognition result received:", event.results);
                 for (let i = event.resultIndex; i < event.results.length; ++i) {
                     current_chunk += event.results[i][0].transcript.toLowerCase() + " ";
                     if (event.results[i].isFinal) {recognition.abort();}
