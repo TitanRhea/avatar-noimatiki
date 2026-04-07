@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Web Avatar - Final Gestures & Live Flow v24 (Clear Lip Sync)</title>
+    <title>Web Avatar - 1Final Gestures & Live Flow v25 (Jaw Sync)</title>
     <style>
         body { margin: 0; overflow: hidden; background-color: #f0e6dc; font-family: 'Segoe UI', sans-serif; }
         #canvas-container { width: 100vw; height: 100vh; display: block; }
@@ -241,13 +241,13 @@
         function gesture_kalimera() {
             is_busy = true; 
             
-            // ΝΕΟ: Διορθωμένο Lip Sync για να ξεχωρίζουν τα φωνήεντα
+            // ΝΕΟ: Εξειδικευμένο Lip Sync βάσει των 3 φωτογραφιών
             if(bones.jaw) {
                 const jawTl = gsap.timeline();
-                jawTl.to(bones.jaw.rotation, { x: deg(112), duration: 0.2, ease: "sine.inOut" }) // Κα (Μεγάλο άνοιγμα - Α)
-                     .to(bones.jaw.rotation, { x: deg(96), duration: 0.2, ease: "sine.inOut" })  // λη (Πολύ μικρό άνοιγμα - Η)
-                     .to(bones.jaw.rotation, { x: deg(102), duration: 0.2, ease: "sine.inOut" }) // μέ (Μεσαίο άνοιγμα - Ε)
-                     .to(bones.jaw.rotation, { x: deg(114), duration: 0.25, ease: "sine.inOut" }) // ρα (Μέγιστο άνοιγμα - Α)
+                jawTl.to(bones.jaw.rotation, { x: deg(115), duration: 0.2, ease: "sine.inOut" }) // Κα (Α - Μεγάλο άνοιγμα, 3η φωτό)
+                     .to(bones.jaw.rotation, { x: deg(94), duration: 0.2, ease: "sine.inOut" })  // λη (Η - Πολύ μικρό άνοιγμα, 2η φωτό)
+                     .to(bones.jaw.rotation, { x: deg(100), duration: 0.2, ease: "sine.inOut" }) // μέ (Ε - Μεσαίο άνοιγμα, 1η φωτό)
+                     .to(bones.jaw.rotation, { x: deg(115), duration: 0.25, ease: "sine.inOut" }) // ρα (Α - Μεγάλο άνοιγμα, 3η φωτό)
                      .to(bones.jaw.rotation, { x: deg(90), duration: 0.2, ease: "sine.inOut" }); // κλείσιμο
             }
 
@@ -366,7 +366,7 @@
             }, 600);
         }
 
-        // --- ΦΩΝΗΤΙΚΟΣ ΕΛΕΓΧΟΣ (ΛΑΪΒ ΡΟΗ ΚΑΙ ΕΠΑΝΑΛΗΨΕΙΣ) ---
+        // --- ΦΩΝΗΤΙΚΟΣ ΕΛΕΓΧΟΣ ---
         const micBtn = document.getElementById('mic-btn');
         const subtitle = document.getElementById('subtitle');
         let recognition = null;
@@ -375,7 +375,7 @@
         if ('webkitSpeechRecognition' in window) {
             recognition = new webkitSpeechRecognition();
             recognition.lang = 'el-GR';
-            recognition.continuous = false; // Εξασφαλίζει "λάιβ" αίσθηση με αυτόματα restarts
+            recognition.continuous = false; 
             recognition.interimResults = false; 
 
             recognition.onresult = (event) => {
