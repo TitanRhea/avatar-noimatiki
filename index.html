@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Web Avatar - Final Flow (Perfect Mic Tracking)</title>
+    <title>Web Avatar - Final Flow (Live Notepad Effect & Perfect Transitions)</title>
     <style>
         body { margin: 0; overflow: hidden; background-color: #f0e6dc; font-family: 'Segoe UI', sans-serif; }
         #canvas-container { width: 100vw; height: 100vh; display: block; }
@@ -15,9 +15,8 @@
             font-size: 22px; color: #333; background: rgba(255, 255, 255, 0.95);
             padding: 12px 25px; border-radius: 20px; display: inline-block; 
             margin-bottom: 15px; font-weight: bold; box-shadow: 0 4px 15px rgba(0,0,0,0.1);
-            min-width: 380px; pointer-events: none;
-            max-width: 80%;
-            word-wrap: break-word;
+            min-width: 380px; max-width: 85%; pointer-events: none;
+            word-wrap: break-word; /* Επιτρέπει στο κείμενο να αλλάζει γραμμή αν μεγαλώσει πολύ */
         }
         .controls { display: flex; justify-content: center; gap: 10px; align-items: center; pointer-events: auto;}
         button { 
@@ -74,8 +73,14 @@
         const basePose = { x: 54, y: 30, z: 17 };
         const VOWEL_OPEN = { 'α': 115, 'ε': 105, 'η': 105, 'ι': 100, 'ο': 110, 'υ': 100, 'ω': 110 };
 
+        // === ΣΥΣΤΗΜΑ ΟΥΡΑΣ ===
         let gestureQueue = [];
         let idleTimer = null; 
+        
+        // Μεταβλητές για τον έλεγχο της οθόνης
+        let hiddenTextLength = 0; 
+        let currentFullTextLength = 0;
+        let lastProcessedIndex = 0;
 
         function enqueueGesture(gestureName) {
             gestureQueue.push(gestureName);
@@ -171,21 +176,10 @@
             }
         }
 
-        function speakWord(word, total_time = 1.5) {
-            if (!bones.jaw) return;
-            const vowels = [...word.toLowerCase()].filter(c => VOWEL_OPEN[c]);
-            const step_time = total_time / (vowels.length || 1);
-            const tl = gsap.timeline();
-            vowels.forEach(v => {
-                tl.to(bones.jaw.rotation, { x: deg(VOWEL_OPEN[v]), duration: step_time / 2, ease: "sine.inOut" })
-                  .to(bones.jaw.rotation, { x: deg(90), duration: step_time / 2, ease: "sine.inOut" });
-            });
-        }
-
+        // --- Η ΛΟΓΙΚΗ ΕΝΑΛΛΑΓΗΣ ΠΟΥ ΚΑΘΑΡΙΖΕΙ ΤΗΝ ΟΘΟΝΗ ---
         function finalize_gesture() { 
             if (gestureQueue.length > 0) {
                 clearFingers(0.2); 
-                
                 if(bones.r_wrist) gsap.to(bones.r_wrist.rotation, { x: 0, y: 0, z: 0, duration: 0.2 });
                 if(bones.l_wrist) gsap.to(bones.l_wrist.rotation, { x: 0, y: 0, z: 0, duration: 0.2 });
 
@@ -201,8 +195,13 @@
                 idleTimer = setTimeout(() => {
                     if (gestureQueue.length === 0 && !is_busy) {
                         resetPose(0.5); 
+                        
+                        // Μόλις ξεκουραστεί, "κρύβει" όλο το παλιό κείμενο για να ξεκινήσει καθαρή πρόταση
+                        hiddenTextLength = currentFullTextLength;
+                        if (lastProcessedIndex < hiddenTextLength) lastProcessedIndex = hiddenTextLength;
+                        document.getElementById('subtitle').innerText = "Ακούω...";
                     }
-                }, 500); 
+                }, 600); // 0.6s παύση πριν πέσουν τα χέρια και σβήσει η οθόνη
             }
         }
 
@@ -424,79 +423,78 @@
             }, 600);
         }
 
-        // --- ΜΙΚΡΟΦΩΝΟ ΠΟΥ ΔΕΝ ΚΛΕΙΝΕΙ ΠΟΤΕ (V41) ---
+        // --- ΤΟ ΑΠΟΛΥΤΟ ΑΣΤΑΜΑΤΗΤΟ ΜΙΚΡΟΦΩΝΟ ΜΕ ΕΦΕ ΣΗΜΕΙΩΜΑΤΑΡΙΟΥ ---
         const micBtn = document.getElementById('mic-btn');
         const subtitle = document.getElementById('subtitle');
         let recognition = null;
         let isListening = false;
-        
-        let sessionTranscript = ""; 
-        let lastProcessedString = ""; 
 
         if ('webkitSpeechRecognition' in window) {
             recognition = new webkitSpeechRecognition();
             recognition.lang = 'el-GR';
-            // ΤΟ ΜΥΣΤΙΚΟ: Σταθερά ανοιχτό, χωρίς διακοπές
+            // Απόλυτο Continuous + Interim για να βλέπεις τα γράμματα να χτίζονται!
             recognition.continuous = true; 
-            recognition.interimResults = false; // Μόνο οριστικά αποτελέσματα για να μην τρελαίνεται
+            recognition.interimResults = true; 
 
             recognition.onresult = (event) => {
-                let newText = "";
+                let fullText = "";
                 
-                for (let i = event.resultIndex; i < event.results.length; ++i) {
-                    if (event.results[i].isFinal) {
-                        newText += event.results[i][0].transcript.toLowerCase() + " ";
-                    }
+                // Ενώνει όλα τα αποτελέσματα (τελικά και ενδιάμεσα)
+                for (let i = 0; i < event.results.length; ++i) {
+                    fullText += event.results[i][0].transcript + " ";
                 }
                 
-                if (!newText.trim()) return;
+                fullText = fullText.toLowerCase();
+                currentFullTextLength = fullText.length;
 
-                sessionTranscript += newText;
-                subtitle.innerText = "Είπες: " + sessionTranscript;
-
-                // Απομονώνουμε το κείμενο που ΔΕΝ έχουμε επεξεργαστεί ακόμα
-                let unprocessedText = sessionTranscript.substring(lastProcessedString.length);
-
-                const keywords = {
-                    'efcharisto': ["ευχαριστώ", "ευχαριστω", "ευχαριστώ πολύ", "ευχαριστω πολυ"],
-                    'kalimera': ["καλημέρα", "καλημερα"],
-                    'mesimeri': ["μεσημέρι", "μεσημερι", "καλό μεσημέρι", "καλο μεσημερι"],
-                    'geia': ["γεια", "γειά", "χαίρετε"],
-                    'onoma': ["ποιο είναι το όνομά σου", "ποιο ειναι το ονομα σου", "όνομά σου", "ονομα σου", "όνομα", "ονομα", "ποιο", "ειναι", "σου"]
-                };
-
-                let matches = [];
+                // Εμφανίζει στην οθόνη μόνο το κείμενο που ΔΕΝ έχει κρυφτεί από το προηγούμενο A-Pose
+                let visibleText = fullText.substring(hiddenTextLength).trim();
                 
-                for (const [gesture, triggerWords] of Object.entries(keywords)) {
-                    triggerWords.forEach(word => {
-                        let idx = unprocessedText.indexOf(word);
-                        while (idx !== -1) {
-                            matches.push({ gesture: gesture, index: idx, length: word.length });
-                            idx = unprocessedText.indexOf(word, idx + word.length);
-                        }
-                    });
+                if (visibleText !== "") {
+                    subtitle.innerText = "Είπες: " + visibleText;
                 }
-                
-                matches.sort((a, b) => a.index - b.index);
 
-                let validMatches = [];
-                let lastEnd = 0;
-                
-                matches.forEach(match => {
-                    if (match.index >= lastEnd) {
-                        validMatches.push(match);
-                        lastEnd = match.index + match.length;
+                // Η λογική αναγνώρισης τρέχει σε λούπα για να πιάσει γρήγορες λέξεις
+                let safetyCounter = 0;
+                while (safetyCounter < 5) { 
+                    safetyCounter++;
+                    let unprocessed = fullText.substring(lastProcessedIndex);
+
+                    let earliestMatch = null;
+                    let earliestIdx = Infinity;
+                    let matchLength = 0;
+
+                    const keywords = {
+                        'efcharisto': ["ευχαριστώ", "ευχαριστω", "ευχαριστώ πολύ", "ευχαριστω πολυ"],
+                        'kalimera': ["καλημέρα", "καλημερα"],
+                        'mesimeri': ["καλό μεσημέρι", "καλο μεσημερι", "μεσημέρι", "μεσημερι"],
+                        'geia': ["γεια", "γειά", "χαίρετε"],
+                        'onoma': ["ποιο είναι το όνομά σου", "ποιο ειναι το ονομα σου", "όνομά σου", "ονομα σου"]
+                    };
+
+                    for (const [gesture, triggerWords] of Object.entries(keywords)) {
+                        triggerWords.forEach(word => {
+                            let idx = unprocessed.indexOf(word);
+                            if (idx !== -1) {
+                                if (idx < earliestIdx) {
+                                    earliestIdx = idx;
+                                    earliestMatch = gesture;
+                                    matchLength = word.length;
+                                } else if (idx === earliestIdx && word.length > matchLength) {
+                                    earliestMatch = gesture;
+                                    matchLength = word.length;
+                                }
+                            }
+                        });
                     }
-                });
 
-                if (validMatches.length > 0) {
-                    // Ενημερώνουμε το σύστημα ότι έχουμε επεξεργαστεί το κείμενο μέχρι την τελευταία λέξη που βρέθηκε
-                    let lastMatch = validMatches[validMatches.length - 1];
-                    lastProcessedString += unprocessedText.substring(0, lastMatch.index + lastMatch.length);
-                    
-                    validMatches.forEach(match => {
-                        enqueueGesture(match.gesture);
-                    });
+                    // Αν βρει λέξη, την βάζει στην ουρά ΛΑΪΒ και κουνάει τον κέρσορα!
+                    if (earliestMatch) {
+                        enqueueGesture(earliestMatch);
+                        lastProcessedIndex += (earliestIdx + matchLength);
+                    } else {
+                        break; 
+                    }
                 }
             };
             
@@ -508,10 +506,17 @@
                 }
             };
             
-            // Το Hack: Αν κλείσει, ΞΑΝΑΝΟΙΓΕΙ ΑΜΕΣΩΣ!
+            // Αν ο Chrome κόψει το μικρόφωνο επειδή "κουράστηκε", κάνει FORCE RESTART
             recognition.onend = () => { 
                 if (isListening) {
-                    try { recognition.start(); } catch(e) {}
+                    // Επειδή κάνει restart, τα δεδομένα του Chrome μηδενίζονται. 
+                    // Άρα μηδενίζουμε κι εμείς τους κέρσορες για να μην κρασάρει.
+                    hiddenTextLength = 0;
+                    lastProcessedIndex = 0;
+                    currentFullTextLength = 0;
+                    setTimeout(() => {
+                        try { recognition.start(); } catch(e) {}
+                    }, 200);
                 } 
             };
         }
@@ -519,8 +524,9 @@
         micBtn.onclick = () => {
             if (!isListening) {
                 isListening = true;
-                sessionTranscript = ""; 
-                lastProcessedString = "";
+                hiddenTextLength = 0;
+                lastProcessedIndex = 0;
+                currentFullTextLength = 0;
                 try { recognition.start(); } catch(e) {}
                 micBtn.innerText = "🛑 Κλείσιμο";
                 micBtn.classList.add('listening');
