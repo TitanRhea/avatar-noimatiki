@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Web Avatar - Fix Queue Transitions</title>
+    <title>Web Avatar - Final Flow (Zero Delays, Perfect Queue)</title>
     <style>
         body { margin: 0; overflow: hidden; background-color: #f0e6dc; font-family: 'Segoe UI', sans-serif; }
         #canvas-container { width: 100vw; height: 100vh; display: block; }
@@ -73,13 +73,13 @@
         const basePose = { x: 54, y: 30, z: 17 };
         const VOWEL_OPEN = { 'α': 115, 'ε': 105, 'η': 105, 'ι': 100, 'ο': 110, 'υ': 100, 'ω': 110 };
 
-        // === ΣΥΣΤΗΜΑ ΟΥΡΑΣ ΚΑΙ ΧΡΟΝΟΜΕΤΡΟΥ ===
+        // === ΣΥΣΤΗΜΑ ΟΥΡΑΣ ===
         let gestureQueue = [];
         let idleTimer = null; 
 
         function enqueueGesture(gestureName) {
             gestureQueue.push(gestureName);
-            clearTimeout(idleTimer); 
+            clearTimeout(idleTimer); // Αν μπει λέξη, ακυρώνεται η επιστροφή σε A-Pose
             if (!is_busy) {
                 processQueue();
             }
@@ -176,20 +176,24 @@
             });
         }
 
-        // --- Η ΝΕΑ ΛΟΓΙΚΗ ΕΠΑΝΑΦΟΡΑΣ ΜΕ ΠΑΝΤΑ RESETPOSE ---
+        // --- Η ΝΕΑ ΛΟΓΙΚΗ ΕΠΑΝΑΦΟΡΑΣ ΜΕ ΤΗ ΣΩΣΤΗ ΡΟΗ ---
         function finalize_gesture() { 
-            // Κάνουμε resetPose σε κάθε περίπτωση για να "καθαρίσουν" οι αρθρώσεις
-            resetPose(0.4); 
-            
             if (gestureQueue.length > 0) {
-                // Υπάρχει λέξη στην ουρά: περιμένουμε λίγο να ολοκληρωθεί το resetPose και συνεχίζουμε
+                // Υπάρχει λέξη στην ουρά!
+                // Κρατάει την τελευταία πόζα για 0.2s και πάει κατευθείαν στην επόμενη, ΧΩΡΙΣ ΚΑΝΕΝΑ resetPose.
                 setTimeout(() => { 
                     is_busy = false; 
                     processQueue(); 
-                }, 400); 
+                }, 200); 
             } else {
-                // Η ουρά άδειασε.
+                // Η ουρά άδειασε. 
                 is_busy = false; 
+                // Ξεκινάει ο μετρητής ησυχίας (0.5s).
+                idleTimer = setTimeout(() => {
+                    if (gestureQueue.length === 0 && !is_busy) {
+                        resetPose(0.5); // Τώρα κατεβάζει τα χέρια στην A-Pose.
+                    }
+                }, 500); 
             }
         }
 
@@ -409,32 +413,25 @@
             }, 600);
         }
 
-        // --- ΑΣΤΑΜΑΤΗΤΟΣ ΦΩΝΗΤΙΚΟΣ ΕΛΕΓΧΟΣ (FIXED) ---
+        // --- ΑΣΤΑΜΑΤΗΤΟΣ ΦΩΝΗΤΙΚΟΣ ΕΛΕΓΧΟΣ ---
         const micBtn = document.getElementById('mic-btn');
         const subtitle = document.getElementById('subtitle');
         let recognition = null;
         let isListening = false;
-        let lastProcessedIndex = -1; // Αποτρέπει το διάβασμα των ίδιων λέξεων δύο φορές!
 
         if ('webkitSpeechRecognition' in window) {
             recognition = new webkitSpeechRecognition();
             recognition.lang = 'el-GR';
-            // Το μικρόφωνο παραμένει ανοιχτό και ακούει συνεχόμενα χωρίς διακοπή
+            // Δεν κλείνει ποτέ. Διαβάζει ασταμάτητα!
             recognition.continuous = true; 
             recognition.interimResults = false; 
-            
-            recognition.onstart = () => {
-                lastProcessedIndex = -1; // Κάθε φορά που ξεκινάει, μηδενίζουμε τον μνήμονα
-            };
 
             recognition.onresult = (event) => {
                 let newText = "";
-                
-                // Παίρνουμε ΜΟΝΟ τα νέα κομμάτια που μόλις άκουσε
+                // Το resultIndex μας φέρνει ΜΟΝΟ την καινούργια φράση που είπες, χωρίς να ξαναδιαβάζει τις παλιές!
                 for (let i = event.resultIndex; i < event.results.length; ++i) {
-                    if (i > lastProcessedIndex && event.results[i].isFinal) {
+                    if (event.results[i].isFinal) {
                         newText += event.results[i][0].transcript.toLowerCase() + " ";
-                        lastProcessedIndex = i; // Ενημερώνουμε ότι τα διαβάσαμε
                     }
                 }
                 newText = newText.trim();
@@ -443,7 +440,7 @@
                 subtitle.innerText = "Είπες: " + newText;
 
                 const keywords = {
-                    'efcharisto': ["ευχαριστώ", "ευχαριστω"],
+                    'efcharisto': ["ευχαριστώ", "ευχαριστω", "ευχαριστώ πολύ", "ευχαριστω πολυ"],
                     'kalimera': ["καλημέρα", "καλημερα"],
                     'mesimeri': ["μεσημέρι", "μεσημερι", "καλό μεσημέρι", "καλο μεσημερι"],
                     'geia': ["γεια", "γειά", "χαίρετε"],
