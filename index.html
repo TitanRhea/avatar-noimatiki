@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Web Avatar - Final Flow (Perfect Continuous Mic & Auto-Clear)</title>
+    <title>Web Avatar - Final Flow (Python Logic Replica & Perfect Memory)</title>
     <style>
         body { margin: 0; overflow: hidden; background-color: #f0e6dc; font-family: 'Segoe UI', sans-serif; }
         #canvas-container { width: 100vw; height: 100vh; display: block; }
@@ -68,17 +68,18 @@
 
         let currentModel = null, bones = {}, is_busy = false;
         const deg = (d) => d * (Math.PI / 180);
-        
         const basePose = { x: 54, y: 30, z: 17 };
         const VOWEL_OPEN = { 'α': 115, 'ε': 105, 'η': 105, 'ι': 100, 'ο': 110, 'υ': 100, 'ω': 110 };
 
-        // === ΣΥΣΤΗΜΑ ΟΥΡΑΣ ===
         let gestureQueue = [];
         let idleTimer = null; 
 
-        // Η ΔΙΚΗ ΜΑΣ ΜΝΗΜΗ - Δεν εξαρτάται από τις επανεκκινήσεις του Chrome!
-        let final_transcript = ""; 
-        let last_processed_index = 0;
+        // Η απόλυτη μνήμη του συστήματος
+        let global_transcript = "";
+        let current_session_transcript = "";
+        let full_text = "";
+        let processed_length = 0;
+        let display_offset = 0; // Ελέγχει τι φαίνεται και τι κρύβεται από την οθόνη
 
         function enqueueGesture(gestureName) {
             gestureQueue.push(gestureName);
@@ -90,7 +91,6 @@
 
         function processQueue() {
             if (is_busy || gestureQueue.length === 0) return;
-            
             clearTimeout(idleTimer); 
 
             let nextGesture = gestureQueue.shift();
@@ -159,21 +159,9 @@
             }
         }
 
-        function speakWord(word, total_time = 1.5) {
-            if (!bones.jaw) return;
-            const vowels = [...word.toLowerCase()].filter(c => VOWEL_OPEN[c]);
-            const step_time = total_time / (vowels.length || 1);
-            const tl = gsap.timeline();
-            vowels.forEach(v => {
-                tl.to(bones.jaw.rotation, { x: deg(VOWEL_OPEN[v]), duration: step_time / 2, ease: "sine.inOut" })
-                  .to(bones.jaw.rotation, { x: deg(90), duration: step_time / 2, ease: "sine.inOut" });
-            });
-        }
-
-        // --- Η ΤΕΛΕΙΑ ΡΟΗ & ΤΟ ΑΥΤΟΜΑΤΟ ΣΒΗΣΙΜΟ ΟΘΟΝΗΣ ---
         function finalize_gesture() { 
             if (gestureQueue.length > 0) {
-                // Υπάρχει λέξη στην ουρά! Πηγαίνει απευθείας στην επόμενη χωρίς A-Pose.
+                // Υπάρχει λέξη: Μετάβαση χωρίς A-Pose. Κατεβάζει αριστερό, κρατάει δεξί!
                 clearFingers(0.2); 
                 if(bones.r_wrist) gsap.to(bones.r_wrist.rotation, { x: 0, y: 0, z: 0, duration: 0.2 });
                 if(bones.l_wrist) gsap.to(bones.l_wrist.rotation, { x: 0, y: 0, z: 0, duration: 0.2 });
@@ -186,21 +174,17 @@
                 }, 200); 
             } else {
                 is_busy = false; 
-                // Περιμένει 0.5s ησυχίας
                 idleTimer = setTimeout(() => {
                     if (gestureQueue.length === 0 && !is_busy) {
-                        resetPose(0.5); // Κατεβάζει τα χέρια (A-Pose)
-                        
-                        // ΚΑΙ ΕΚΕΙΝΗ ΤΗ ΣΤΙΓΜΗ ΚΑΘΑΡΙΖΕΙ ΤΗΝ ΟΘΟΝΗ ΚΑΙ ΤΗ ΜΝΗΜΗ
-                        final_transcript = "";
-                        last_processed_index = 0;
+                        resetPose(0.5); 
+                        // ΕΚΑΝΕ A-POSE: Τώρα κρύβουμε όλο το παλιό κείμενο από την οθόνη!
+                        display_offset = full_text.length;
                         document.getElementById('subtitle').innerText = "Ακούω...";
                     }
                 }, 500); 
             }
         }
 
-        // --- CUSTOM POSITIONS ---
         function customFist(duration = 0.1) {
             if (!currentModel) return;
             if(bones.l_joints['thumb1']) gsap.to(bones.l_joints['thumb1'].rotation, {x: deg(14), y: deg(-14), z: deg(-27), duration: duration});
@@ -234,12 +218,11 @@
             if(j['index3']) gsap.to(j['index3'].rotation, {x: 0, y: 0, z: 0, duration: duration});
         }
 
-        // === ΚΙΝΗΣΕΙΣ (ΑΠΟΛΥΤΑ ΚΛΕΙΔΩΜΕΝΕΣ) ===
+        // === ΚΙΝΗΣΕΙΣ ===
 
         function gesture_efcharisto() {
             is_busy = true; 
             clearFingers(); 
-            
             if(bones.jaw) {
                 const jawTl = gsap.timeline();
                 jawTl.to(bones.jaw.rotation, { x: deg(100), duration: 0.3, ease: "sine.inOut" }) 
@@ -248,7 +231,6 @@
                      .to(bones.jaw.rotation, { x: deg(108), duration: 0.5, ease: "sine.inOut" }) 
                      .to(bones.jaw.rotation, { x: deg(90), duration: 0.3, ease: "sine.inOut" }); 
             }
-
             if(bones.r_shoulder) gsap.to(bones.r_shoulder.rotation, { x: deg(27), y: deg(-35), z: deg(-26), duration: 0.5 });
             if(bones.r_elbow) gsap.to(bones.r_elbow.rotation, { x: deg(25), y: deg(-26), z: deg(-107), duration: 0.5 });
             setTimeout(() => {
@@ -256,7 +238,6 @@
                 if(bones.r_elbow) gsap.to(bones.r_elbow.rotation, { x: deg(91), y: deg(-24), z: deg(-107), duration: 0.5 });
                 if(bones.l_shoulder) gsap.to(bones.l_shoulder.rotation, { x: deg(52), y: deg(27), z: deg(24), duration: 0.5 });
                 if(bones.l_elbow) gsap.to(bones.l_elbow.rotation, { x: deg(91), y: deg(24), z: deg(107), duration: 0.5 });
-                
                 const pulse = gsap.timeline({ repeat: 2, onComplete: finalize_gesture });
                 pulse.to({}, { duration: 0.1, onStart: () => { customFist(0.1); } })
                      .to({}, { duration: 0.15 }) 
@@ -267,7 +248,6 @@
 
         function gesture_kalimera() {
             is_busy = true; 
-            
             if(bones.jaw) {
                 const jawTl = gsap.timeline();
                 jawTl.to(bones.jaw.rotation, { x: deg(115), duration: 0.2, ease: "sine.inOut" }) 
@@ -276,34 +256,27 @@
                      .to(bones.jaw.rotation, { x: deg(115), duration: 0.25, ease: "sine.inOut" }) 
                      .to(bones.jaw.rotation, { x: deg(90), duration: 0.2, ease: "sine.inOut" }); 
             }
-
             if(bones.r_shoulder) gsap.to(bones.r_shoulder.rotation, { x: deg(70), y: deg(14), z: deg(-17), duration: 0.5 });
             if(bones.r_elbow) gsap.to(bones.r_elbow.rotation, { x: deg(108), y: deg(-31), z: deg(-69), duration: 0.5 });
             if(bones.r_wrist) gsap.to(bones.r_wrist.rotation, { x: 0, y: 0, z: 0, duration: 0.5 });
-
             if(bones.r_joints['thumb1']) gsap.to(bones.r_joints['thumb1'].rotation, {x: deg(14), y: deg(-14), z: deg(27), duration: 0.4});
             if(bones.r_joints['index1']) gsap.to(bones.r_joints['index1'].rotation, {x: deg(52), y: 0, z: deg(9), duration: 0.4});
             if(bones.r_joints['middle1']) gsap.to(bones.r_joints['middle1'].rotation, {x: deg(55), y: deg(4), z: deg(3), duration: 0.4});
             if(bones.r_joints['ring1']) gsap.to(bones.r_joints['ring1'].rotation, {x: deg(51), y: deg(5), z: deg(-4), duration: 0.4});
             if(bones.r_joints['pinky1']) gsap.to(bones.r_joints['pinky1'].rotation, {x: deg(52), y: deg(-31), z: deg(-8), duration: 0.4});
-
             setTimeout(() => {
                 if(bones.r_shoulder) gsap.to(bones.r_shoulder.rotation, { x: deg(70), y: deg(14), z: deg(-17), duration: 0.3 });
-                
                 if(bones.r_elbow) {
                     const elbowTurn = gsap.timeline();
                     elbowTurn.to(bones.r_elbow.rotation, { x: deg(140), y: deg(-20), z: deg(-40), duration: 0.15, ease: "none" })
                              .to(bones.r_elbow.rotation, { x: deg(140), y: deg(-20), z: deg(-40), duration: 0.15, ease: "power1.out" });
                 }
-
                 if(bones.r_wrist) {
                     const wristTurn = gsap.timeline();
                     wristTurn.to(bones.r_wrist.rotation, { x: 0, y: deg(-80), z: 0, duration: 0.15, ease: "none" })
                              .to(bones.r_wrist.rotation, { x: 0, y: deg(-160), z: 0, duration: 0.15, ease: "power1.out" });
                 }
-
                 customKalimeraPart2('r', 0.3); 
-
                 setTimeout(() => {
                     const indexBones = [bones.r_joints['index1'], bones.r_joints['index2'], bones.r_joints['index3']].filter(b=>b);
                     if (indexBones.length > 0) {
@@ -312,14 +285,12 @@
                              .to(indexBones.map(b=>b.rotation), { x: 0, duration: 0.15, ease: "power1.inOut" });
                     } else { finalize_gesture(); }
                 }, 400);
-
             }, 600);
         }
 
         function gesture_onoma() {
             is_busy = true; 
             clearFingers(); 
-
             if(bones.jaw) {
                 const jawTl = gsap.timeline();
                 jawTl.to(bones.jaw.rotation, { x: deg(108), duration: 0.3, ease: "sine.inOut" }) 
@@ -327,35 +298,24 @@
                      .to(bones.jaw.rotation, { x: deg(115), duration: 0.4, ease: "sine.inOut" }) 
                      .to(bones.jaw.rotation, { x: deg(90), duration: 0.2, ease: "sine.inOut" }); 
             }
-            
             if(bones.r_shoulder) gsap.to(bones.r_shoulder.rotation, { x: deg(50), y: deg(-15), z: deg(-70), duration: 0.5 });
             if(bones.r_elbow) gsap.to(bones.r_elbow.rotation, { x: deg(-9), y: deg(32), z: deg(-10), duration: 0.5 });
             if(bones.r_wrist) gsap.to(bones.r_wrist.rotation, { x: 0, y: 0, z: 0, duration: 0.5 });
-            
             customKalimeraPart2('r', 0.3); 
-
             setTimeout(() => {
                 if(bones.r_shoulder) gsap.to(bones.r_shoulder.rotation, { x: deg(25), y: deg(7), z: deg(-51), duration: 0.5 });
                 if(bones.r_elbow) gsap.to(bones.r_elbow.rotation, { x: deg(59), y: deg(1), z: deg(-48), duration: 0.5 });
                 if(bones.l_shoulder) gsap.to(bones.l_shoulder.rotation, { x: deg(25), y: deg(-7), z: deg(51), duration: 0.5 });
                 if(bones.l_elbow) gsap.to(bones.l_elbow.rotation, { x: deg(59), y: deg(1), z: deg(48), duration: 0.5 });
-                
                 customKalimeraPart2('l', 0.5); 
-
                 setTimeout(() => {
                     let start = Date.now();
                     const draw = () => {
                         let el = (Date.now() - start) / 1000;
                         if (el < 3.2) {
                             const r = 0.35; 
-                            if(bones.r_wrist) {
-                                bones.r_wrist.rotation.x = Math.sin(el * 11) * r;
-                                bones.r_wrist.rotation.y = Math.cos(el * 11) * r;
-                            }
-                            if(bones.l_wrist) {
-                                bones.l_wrist.rotation.x = Math.sin(el * 11) * r;
-                                bones.l_wrist.rotation.y = -Math.cos(el * 11) * r;
-                            }
+                            if(bones.r_wrist) { bones.r_wrist.rotation.x = Math.sin(el * 11) * r; bones.r_wrist.rotation.y = Math.cos(el * 11) * r; }
+                            if(bones.l_wrist) { bones.l_wrist.rotation.x = Math.sin(el * 11) * r; bones.l_wrist.rotation.y = -Math.cos(el * 11) * r; }
                             requestAnimationFrame(draw);
                         } else { finalize_gesture(); }
                     };
@@ -367,7 +327,6 @@
         function gesture_mesimeri() {
             is_busy = true; 
             clearFingers(); 
-            
             if(bones.jaw) {
                 const jawTl = gsap.timeline();
                 jawTl.to(bones.jaw.rotation, { x: deg(100), duration: 0.3, ease: "sine.inOut" }) 
@@ -376,18 +335,14 @@
                      .to(bones.jaw.rotation, { x: deg(94), duration: 0.3, ease: "sine.inOut" })  
                      .to(bones.jaw.rotation, { x: deg(90), duration: 0.3, ease: "sine.inOut" }); 
             }
-            
             if(bones.r_shoulder) gsap.to(bones.r_shoulder.rotation, { x: deg(70), y: deg(14), z: deg(-17), duration: 0.5 });
             if(bones.r_elbow) gsap.to(bones.r_elbow.rotation, { x: deg(108), y: deg(-31), z: deg(-69), duration: 0.5 });
             if(bones.r_wrist) gsap.to(bones.r_wrist.rotation, { x: 0, y: 0, z: 0, duration: 0.5 });
-
             setTimeout(() => {
                 if(bones.r_shoulder) gsap.to(bones.r_shoulder.rotation, { x: deg(60), y: deg(-10), z: deg(-43), duration: 0.5 });
                 if(bones.r_elbow) gsap.to(bones.r_elbow.rotation, { x: deg(43), y: deg(-38), z: deg(-83), duration: 0.5 });
-                
                 if(bones.r_wrist) {
                     gsap.to(bones.r_wrist.rotation, { x: deg(-43), y: deg(-21), z: deg(-68), duration: 0.5 });
-                    
                     setTimeout(() => {
                         const tl_v = gsap.timeline({ repeat: 2, onComplete: finalize_gesture });
                         tl_v.to(bones.r_wrist.rotation, { z: deg(-68 + 25), duration: 0.4, ease: "sine.inOut" })
@@ -400,14 +355,12 @@
         function gesture_geia() {
             is_busy = true; 
             clearFingers(); 
-            
             if(bones.jaw) {
                 const jawTl = gsap.timeline();
                 jawTl.to(bones.jaw.rotation, { x: deg(98), duration: 0.25, ease: "sine.inOut" }) 
                      .to(bones.jaw.rotation, { x: deg(115), duration: 0.35, ease: "sine.inOut" }) 
                      .to(bones.jaw.rotation, { x: deg(90), duration: 0.2, ease: "sine.inOut" }); 
             }
-
             if(bones.r_shoulder) gsap.to(bones.r_shoulder.rotation, { x: deg(11), y: deg(18), z: deg(4), duration: 0.5 });
             if(bones.r_elbow) gsap.to(bones.r_elbow.rotation, { x: deg(-10), y: deg(35), z: deg(-128), duration: 0.5 });
             setTimeout(() => {
@@ -418,7 +371,7 @@
             }, 600);
         }
 
-        // --- ΤΟ ΑΠΟΛΥΤΟ ΑΣΤΑΜΑΤΗΤΟ ΜΙΚΡΟΦΩΝΟ ΜΕ ΚΕΡΣΟΡΑ ---
+        // === ΤΟ ΑΣΤΑΜΑΤΗΤΟ ΜΙΚΡΟΦΩΝΟ ΜΕ ΤΗ ΔΙΚΗ ΜΑΣ ΜΝΗΜΗ ===
         const micBtn = document.getElementById('mic-btn');
         const subtitle = document.getElementById('subtitle');
         let recognition = null;
@@ -428,35 +381,36 @@
             recognition = new webkitSpeechRecognition();
             recognition.lang = 'el-GR';
             recognition.continuous = true; 
-            recognition.interimResults = true; 
+            recognition.interimResults = true; // Λάιβ καταγραφή
+
+            recognition.onstart = () => {
+                current_session_transcript = ""; 
+            };
 
             recognition.onresult = (event) => {
-                let current_final = "";
-                let current_interim = "";
+                current_session_transcript = "";
                 
-                for (let i = event.resultIndex; i < event.results.length; ++i) {
-                    if (event.results[i].isFinal) {
-                        current_final += event.results[i][0].transcript.toLowerCase() + " ";
-                    } else {
-                        current_interim += event.results[i][0].transcript.toLowerCase() + " ";
-                    }
+                // Ενώνει τα δεδομένα του ΤΡΕΧΟΝΤΟΣ session
+                for (let i = 0; i < event.results.length; ++i) {
+                    current_session_transcript += event.results[i][0].transcript.toLowerCase() + " ";
                 }
                 
-                // Αποθηκεύουμε τα οριστικά στη δική μας, ασφαλή μνήμη
-                final_transcript += current_final;
+                // Η "παγκόσμια" μνήμη ενώνει ό,τι είχες πει στα προηγούμενα sessions + το τωρινό
+                full_text = global_transcript + current_session_transcript;
                 
-                let displayText = final_transcript + current_interim;
-                if(displayText.trim() !== "") {
-                    subtitle.innerText = "Είπες: " + displayText;
+                // Εμφανίζει στην οθόνη ΜΟΝΟ ό,τι δεν έχει κρυφτεί (από το τελευταίο A-Pose)
+                let visible_text = full_text.substring(display_offset).trim();
+                if (visible_text !== "") {
+                    subtitle.innerText = "Είπες: " + visible_text;
                 }
 
-                // Διαβάζουμε ΜΟΝΟ το κείμενο που δεν έχουμε ελέγξει
-                let search_text = displayText.toLowerCase();
-                
+                // Αναζήτηση Λέξεων σε Λούπα (Δεν χάνει λέξη!)
                 let safety = 0;
-                while (safety < 10) {
+                while (safety < 20) {
                     safety++;
-                    let unprocessed = search_text.substring(last_processed_index);
+                    if (processed_length >= full_text.length) break;
+                    
+                    let unprocessed = full_text.substring(processed_length);
                     let earliestMatch = null;
                     let earliestIdx = Infinity;
                     let matchLength = 0;
@@ -487,7 +441,7 @@
 
                     if (earliestMatch) {
                         enqueueGesture(earliestMatch);
-                        last_processed_index += (earliestIdx + matchLength);
+                        processed_length += (earliestIdx + matchLength);
                     } else {
                         break; 
                     }
@@ -502,9 +456,12 @@
                 }
             };
             
-            // Αν κλείσει λόγω παύσης ή network error, κάνει ΑΜΕΣΩΣ επανεκκίνηση!
+            // Το Hack: Όταν ο Chrome κλείνει το session (π.χ. από ησυχία), 
+            // αποθηκεύουμε το κείμενο στην "παγκόσμια" μνήμη και κάνουμε RESTART!
             recognition.onend = () => { 
                 if (isListening) {
+                    global_transcript += current_session_transcript;
+                    current_session_transcript = "";
                     setTimeout(() => {
                         try { recognition.start(); } catch(e) {}
                     }, 50); 
@@ -515,8 +472,12 @@
         micBtn.onclick = () => {
             if (!isListening) {
                 isListening = true;
-                final_transcript = ""; 
-                last_processed_index = 0;
+                // Καθαρίζουμε ΤΑ ΠΑΝΤΑ μόνο όταν πατάμε το κουμπί!
+                global_transcript = "";
+                current_session_transcript = "";
+                full_text = "";
+                processed_length = 0;
+                display_offset = 0;
                 try { recognition.start(); } catch(e) {}
                 micBtn.innerText = "🛑 Κλείσιμο";
                 micBtn.classList.add('listening');
