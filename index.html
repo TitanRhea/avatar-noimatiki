@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Web Avatar - Final Flow (Immortal Mic & Flawless 3D)</title>
+    <title>Web Avatar - Final Flow (Continuous Text Display & Immortal Mic)</title>
     <style>
         body { margin: 0; overflow: hidden; background-color: #f0e6dc; font-family: 'Segoe UI', sans-serif; }
         #canvas-container { width: 100vw; height: 100vh; display: block; }
@@ -16,6 +16,8 @@
             padding: 12px 25px; border-radius: 20px; display: inline-block; 
             margin-bottom: 15px; font-weight: bold; box-shadow: 0 4px 15px rgba(0,0,0,0.1);
             min-width: 380px; pointer-events: none;
+            max-width: 80%; /* Για να μην βγει εκτός οθόνης αν μιλάς πολλή ώρα */
+            word-wrap: break-word;
         }
         .controls { display: flex; justify-content: center; gap: 10px; align-items: center; pointer-events: auto;}
         button { 
@@ -157,7 +159,7 @@
             });
         }
 
-        // Αυτή η συνάρτηση κατεβάζει ΚΑΙ ΤΑ ΔΥΟ χέρια (χρησιμοποιείται μόνο όταν αδειάσει η ουρά)
+        // Αυτή η συνάρτηση κατεβάζει ΚΑΙ ΤΑ ΔΥΟ χέρια
         function resetPose(speed = 0.5) {
             if (!bones.r_shoulder) return;
             gsap.to(bones.r_shoulder.rotation, { x: deg(basePose.x), y: deg(basePose.y), z: deg(basePose.z), duration: speed });
@@ -430,16 +432,19 @@
             }, 600);
         }
 
-        // --- ΤΟ ΑΠΟΛΥΤΟ ΑΘΑΝΑΤΟ ΜΙΚΡΟΦΩΝΟ ---
+        // --- ΤΟ ΑΠΟΛΥΤΟ ΑΘΑΝΑΤΟ ΜΙΚΡΟΦΩΝΟ ΜΕ ΜΝΗΜΗ ΟΘΟΝΗΣ ---
         const micBtn = document.getElementById('mic-btn');
         const subtitle = document.getElementById('subtitle');
         let recognition = null;
         let isListening = false;
+        
+        // ΝΕΟ: Η μεταβλητή που αποθηκεύει όλο το ιστορικό της ομιλίας για την οθόνη
+        let sessionTranscript = ""; 
 
         if ('webkitSpeechRecognition' in window) {
             recognition = new webkitSpeechRecognition();
             recognition.lang = 'el-GR';
-            // Το γυρνάμε σε FALSE για να κόβει ΜΟΝΟ ΤΟΥ την πρόταση και να μην "μπουκώνει"
+            // Παραμένει στο false για να κάνει restarts αστραπιαία και να μην μπουκώνει
             recognition.continuous = false; 
             recognition.interimResults = false; 
 
@@ -447,7 +452,11 @@
                 let currentText = event.results[0][0].transcript.toLowerCase().trim();
                 if (!currentText) return;
                 
-                subtitle.innerText = "Είπες: " + currentText;
+                // Προσθέτουμε τη νέα φράση δίπλα στην παλιά!
+                sessionTranscript += (sessionTranscript === "" ? "" : " ") + currentText;
+                
+                // Δείχνουμε ΟΛΟ το ιστορικό στην οθόνη, δεν σβήνεται τίποτα!
+                subtitle.innerText = "Είπες: " + sessionTranscript;
 
                 const keywords = {
                     'efcharisto': ["ευχαριστώ", "ευχαριστω", "ευχαριστώ πολύ", "ευχαριστω πολυ"],
@@ -459,6 +468,7 @@
 
                 let matches = [];
                 
+                // Η λογική αναγνώρισης τρέχει ΜΟΝΟ πάνω στη νέα φράση (currentText) για να μην επαναλαμβάνει κινήσεις
                 for (const [gesture, triggerWords] of Object.entries(keywords)) {
                     triggerWords.forEach(word => {
                         let idx = currentText.indexOf(word);
@@ -490,17 +500,14 @@
                 }
             };
             
-            // Το Hack: Αδιαφορεί για ό,τι error κι αν βγάλει ο Chrome (π.χ. no-speech, network)
             recognition.onerror = (event) => { 
                 if (event.error === 'not-allowed') {
-                    // Μόνο αν του κόψεις την άδεια χρήσης θα σταματήσει πραγματικά
                     isListening = false; 
                     micBtn.classList.remove('listening'); 
                     micBtn.innerText = "🎙️ Ενεργοποίηση"; 
                 }
             };
             
-            // Το Hack Part 2: Μόλις κλείσει (από error ή επειδή τελείωσε η πρόταση), ΞΑΝΑΝΟΙΓΕΙ ΑΜΕΣΩΣ!
             recognition.onend = () => { 
                 if (isListening) {
                     try { recognition.start(); } catch(e) {}
@@ -511,12 +518,13 @@
         micBtn.onclick = () => {
             if (!isListening) {
                 isListening = true;
+                sessionTranscript = ""; // Καθαρίζει την οθόνη ΜΟΝΟ όταν ξεκινάς νέα ηχογράφηση
                 try { recognition.start(); } catch(e) {}
                 micBtn.innerText = "🛑 Κλείσιμο";
                 micBtn.classList.add('listening');
                 subtitle.innerText = "Ακούω...";
             } else {
-                isListening = false; // Εδώ κόβεται οριστικά ο κύκλος
+                isListening = false;
                 recognition.stop();
                 micBtn.innerText = "🎙️ Ενεργοποίηση";
                 micBtn.classList.remove('listening');
