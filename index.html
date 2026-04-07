@@ -331,8 +331,8 @@
                     global_history = subtitle.innerText.replace("Είπες: ", "") + " ";
 
                 console.log("STARTING STOPPING")
-                    recognition.stop();
                     recognition.start();
+                    setTimeout(() => { recognition.start();}, 100);
                 } 
             };
 
