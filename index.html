@@ -338,7 +338,7 @@
         micBtn.onclick = () => {
             if (!isListening) {
                 isListening = true; global_history = ""; processed_length = 0;
-                try { recognition.start(); } catch(e) {}
+                recognition.start();
                 micBtn.innerText = "🛑 Κλείσιμο"; micBtn.classList.add('listening');
             } else {
                 isListening = false; recognition.stop();
