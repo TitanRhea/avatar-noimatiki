@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Web Avatar - Final Flow (Continuous Text Display & Immortal Mic)</title>
+    <title>Web Avatar - Final Flow (Perfect Mic Tracking)</title>
     <style>
         body { margin: 0; overflow: hidden; background-color: #f0e6dc; font-family: 'Segoe UI', sans-serif; }
         #canvas-container { width: 100vw; height: 100vh; display: block; }
@@ -16,7 +16,7 @@
             padding: 12px 25px; border-radius: 20px; display: inline-block; 
             margin-bottom: 15px; font-weight: bold; box-shadow: 0 4px 15px rgba(0,0,0,0.1);
             min-width: 380px; pointer-events: none;
-            max-width: 80%; /* Για να μην βγει εκτός οθόνης αν μιλάς πολλή ώρα */
+            max-width: 80%;
             word-wrap: break-word;
         }
         .controls { display: flex; justify-content: center; gap: 10px; align-items: center; pointer-events: auto;}
@@ -71,11 +71,9 @@
         let currentModel = null, bones = {}, is_busy = false;
         const deg = (d) => d * (Math.PI / 180);
         
-        // Η Α-Pose
         const basePose = { x: 54, y: 30, z: 17 };
         const VOWEL_OPEN = { 'α': 115, 'ε': 105, 'η': 105, 'ι': 100, 'ο': 110, 'υ': 100, 'ω': 110 };
 
-        // === ΣΥΣΤΗΜΑ ΟΥΡΑΣ ===
         let gestureQueue = [];
         let idleTimer = null; 
 
@@ -159,7 +157,6 @@
             });
         }
 
-        // Αυτή η συνάρτηση κατεβάζει ΚΑΙ ΤΑ ΔΥΟ χέρια
         function resetPose(speed = 0.5) {
             if (!bones.r_shoulder) return;
             gsap.to(bones.r_shoulder.rotation, { x: deg(basePose.x), y: deg(basePose.y), z: deg(basePose.z), duration: speed });
@@ -185,17 +182,13 @@
             });
         }
 
-        // --- Η ΔΙΟΡΘΩΜΕΝΗ ΛΟΓΙΚΗ ΕΝΑΛΛΑΓΗΣ ΓΙΑ ΤΟ ΑΡΙΣΤΕΡΟ ΧΕΡΙ ---
         function finalize_gesture() { 
             if (gestureQueue.length > 0) {
-                // Υπάρχει επόμενη λέξη! 
-                clearFingers(0.2); // Ισιώνει δάχτυλα
+                clearFingers(0.2); 
                 
-                // Ισιώνει τους καρπούς (για να μην στραμπουλιούνται) 
                 if(bones.r_wrist) gsap.to(bones.r_wrist.rotation, { x: 0, y: 0, z: 0, duration: 0.2 });
                 if(bones.l_wrist) gsap.to(bones.l_wrist.rotation, { x: 0, y: 0, z: 0, duration: 0.2 });
 
-                // Κατεβάζει το ΑΡΙΣΤΕΡΟ χέρι στην A-Pose!
                 if(bones.l_shoulder) gsap.to(bones.l_shoulder.rotation, { x: deg(basePose.x), y: deg(-basePose.y), z: deg(-basePose.z), duration: 0.2 });
                 if(bones.l_elbow) gsap.to(bones.l_elbow.rotation, { x: 0, y: 0, z: 0, duration: 0.2 });
 
@@ -204,7 +197,6 @@
                     processQueue(); 
                 }, 200); 
             } else {
-                // Η ουρά άδειασε εντελώς. Περιμένει 0.5s ησυχίας και μετά κατεβάζει και τα δύο.
                 is_busy = false; 
                 idleTimer = setTimeout(() => {
                     if (gestureQueue.length === 0 && !is_busy) {
@@ -432,31 +424,38 @@
             }, 600);
         }
 
-        // --- ΤΟ ΑΠΟΛΥΤΟ ΑΘΑΝΑΤΟ ΜΙΚΡΟΦΩΝΟ ΜΕ ΜΝΗΜΗ ΟΘΟΝΗΣ ---
+        // --- ΜΙΚΡΟΦΩΝΟ ΠΟΥ ΔΕΝ ΚΛΕΙΝΕΙ ΠΟΤΕ (V41) ---
         const micBtn = document.getElementById('mic-btn');
         const subtitle = document.getElementById('subtitle');
         let recognition = null;
         let isListening = false;
         
-        // ΝΕΟ: Η μεταβλητή που αποθηκεύει όλο το ιστορικό της ομιλίας για την οθόνη
         let sessionTranscript = ""; 
+        let lastProcessedString = ""; 
 
         if ('webkitSpeechRecognition' in window) {
             recognition = new webkitSpeechRecognition();
             recognition.lang = 'el-GR';
-            // Παραμένει στο false για να κάνει restarts αστραπιαία και να μην μπουκώνει
-            recognition.continuous = false; 
-            recognition.interimResults = false; 
+            // ΤΟ ΜΥΣΤΙΚΟ: Σταθερά ανοιχτό, χωρίς διακοπές
+            recognition.continuous = true; 
+            recognition.interimResults = false; // Μόνο οριστικά αποτελέσματα για να μην τρελαίνεται
 
             recognition.onresult = (event) => {
-                let currentText = event.results[0][0].transcript.toLowerCase().trim();
-                if (!currentText) return;
+                let newText = "";
                 
-                // Προσθέτουμε τη νέα φράση δίπλα στην παλιά!
-                sessionTranscript += (sessionTranscript === "" ? "" : " ") + currentText;
+                for (let i = event.resultIndex; i < event.results.length; ++i) {
+                    if (event.results[i].isFinal) {
+                        newText += event.results[i][0].transcript.toLowerCase() + " ";
+                    }
+                }
                 
-                // Δείχνουμε ΟΛΟ το ιστορικό στην οθόνη, δεν σβήνεται τίποτα!
+                if (!newText.trim()) return;
+
+                sessionTranscript += newText;
                 subtitle.innerText = "Είπες: " + sessionTranscript;
+
+                // Απομονώνουμε το κείμενο που ΔΕΝ έχουμε επεξεργαστεί ακόμα
+                let unprocessedText = sessionTranscript.substring(lastProcessedString.length);
 
                 const keywords = {
                     'efcharisto': ["ευχαριστώ", "ευχαριστω", "ευχαριστώ πολύ", "ευχαριστω πολυ"],
@@ -468,13 +467,12 @@
 
                 let matches = [];
                 
-                // Η λογική αναγνώρισης τρέχει ΜΟΝΟ πάνω στη νέα φράση (currentText) για να μην επαναλαμβάνει κινήσεις
                 for (const [gesture, triggerWords] of Object.entries(keywords)) {
                     triggerWords.forEach(word => {
-                        let idx = currentText.indexOf(word);
+                        let idx = unprocessedText.indexOf(word);
                         while (idx !== -1) {
                             matches.push({ gesture: gesture, index: idx, length: word.length });
-                            idx = currentText.indexOf(word, idx + word.length);
+                            idx = unprocessedText.indexOf(word, idx + word.length);
                         }
                     });
                 }
@@ -492,11 +490,13 @@
                 });
 
                 if (validMatches.length > 0) {
+                    // Ενημερώνουμε το σύστημα ότι έχουμε επεξεργαστεί το κείμενο μέχρι την τελευταία λέξη που βρέθηκε
+                    let lastMatch = validMatches[validMatches.length - 1];
+                    lastProcessedString += unprocessedText.substring(0, lastMatch.index + lastMatch.length);
+                    
                     validMatches.forEach(match => {
                         enqueueGesture(match.gesture);
                     });
-                } else {
-                    speakWord(currentText); 
                 }
             };
             
@@ -508,6 +508,7 @@
                 }
             };
             
+            // Το Hack: Αν κλείσει, ΞΑΝΑΝΟΙΓΕΙ ΑΜΕΣΩΣ!
             recognition.onend = () => { 
                 if (isListening) {
                     try { recognition.start(); } catch(e) {}
@@ -518,7 +519,8 @@
         micBtn.onclick = () => {
             if (!isListening) {
                 isListening = true;
-                sessionTranscript = ""; // Καθαρίζει την οθόνη ΜΟΝΟ όταν ξεκινάς νέα ηχογράφηση
+                sessionTranscript = ""; 
+                lastProcessedString = "";
                 try { recognition.start(); } catch(e) {}
                 micBtn.innerText = "🛑 Κλείσιμο";
                 micBtn.classList.add('listening');
