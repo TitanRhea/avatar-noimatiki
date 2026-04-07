@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Web Avatar - Final Flow (Python Video Replica)</title>
+    <title>Web Avatar - Final Flow (Perfect Continuous Mic & Auto-Clear)</title>
     <style>
         body { margin: 0; overflow: hidden; background-color: #f0e6dc; font-family: 'Segoe UI', sans-serif; }
         #canvas-container { width: 100vw; height: 100vh; display: block; }
@@ -69,13 +69,16 @@
         let currentModel = null, bones = {}, is_busy = false;
         const deg = (d) => d * (Math.PI / 180);
         
-        // Η Α-Pose
         const basePose = { x: 54, y: 30, z: 17 };
         const VOWEL_OPEN = { 'α': 115, 'ε': 105, 'η': 105, 'ι': 100, 'ο': 110, 'υ': 100, 'ω': 110 };
 
         // === ΣΥΣΤΗΜΑ ΟΥΡΑΣ ===
         let gestureQueue = [];
         let idleTimer = null; 
+
+        // Η ΔΙΚΗ ΜΑΣ ΜΝΗΜΗ - Δεν εξαρτάται από τις επανεκκινήσεις του Chrome!
+        let final_transcript = ""; 
+        let last_processed_index = 0;
 
         function enqueueGesture(gestureName) {
             gestureQueue.push(gestureName);
@@ -116,30 +119,20 @@
                 
                 currentModel.traverse(n => {
                     if (n.isMesh && (n.name.toLowerCase().includes('cube') || n.name.toLowerCase().includes('box'))) n.visible = false;
-                    
                     if (n.isBone) {
                         const bName = n.name;
                         const bLower = bName.toLowerCase();
-                        
                         if (bLower.includes('jaw')) bones.jaw = n;
-                        
                         if (bName === 'mixamorig6RightArm') bones.r_shoulder = n;
                         if (bName === 'mixamorig6RightForeArm') bones.r_elbow = n;
                         if (bName === 'mixamorig6RightHand') bones.r_wrist = n;
-
                         if (bName === 'mixamorig6LeftArm') bones.l_shoulder = n;
                         if (bName === 'mixamorig6LeftForeArm') bones.l_elbow = n;
                         if (bName === 'mixamorig6LeftHand') bones.l_wrist = n;
-
                         const match = bLower.match(/(thumb|index|middle|ring|pinky)(\d)/);
                         if (match) {
-                            if (bLower.includes('right')) {
-                                bones.r_joints[match[0]] = n;
-                                bones.r_fingers.push(n);
-                            } else if (bLower.includes('left')) {
-                                bones.l_joints[match[0]] = n;
-                                bones.l_fingers.push(n);
-                            }
+                            if (bLower.includes('right')) { bones.r_joints[match[0]] = n; bones.r_fingers.push(n); } 
+                            else if (bLower.includes('left')) { bones.l_joints[match[0]] = n; bones.l_fingers.push(n); }
                         }
                     }
                 });
@@ -147,12 +140,7 @@
                 setTimeout(() => {
                     resetPose(0.1);
                     if (bones.jaw) bones.jaw.rotation.x = deg(90);
-                    
-                    if(bones.r_shoulder) {
-                        document.getElementById('subtitle').innerText = "Rhea: Σύστημα Έτοιμο!";
-                    } else {
-                        document.getElementById('subtitle').innerText = "Rhea: Σφάλμα ( mixamorig6 missing)";
-                    }
+                    if(bones.r_shoulder) document.getElementById('subtitle').innerText = "Rhea: Σύστημα Έτοιμο!";
                 }, 400);
             });
         }
@@ -182,13 +170,13 @@
             });
         }
 
+        // --- Η ΤΕΛΕΙΑ ΡΟΗ & ΤΟ ΑΥΤΟΜΑΤΟ ΣΒΗΣΙΜΟ ΟΘΟΝΗΣ ---
         function finalize_gesture() { 
             if (gestureQueue.length > 0) {
-                // Υπάρχει λέξη, άρα μεταβαίνει ομαλά χωρίς να κατεβάσει χέρια!
+                // Υπάρχει λέξη στην ουρά! Πηγαίνει απευθείας στην επόμενη χωρίς A-Pose.
                 clearFingers(0.2); 
                 if(bones.r_wrist) gsap.to(bones.r_wrist.rotation, { x: 0, y: 0, z: 0, duration: 0.2 });
                 if(bones.l_wrist) gsap.to(bones.l_wrist.rotation, { x: 0, y: 0, z: 0, duration: 0.2 });
-
                 if(bones.l_shoulder) gsap.to(bones.l_shoulder.rotation, { x: deg(basePose.x), y: deg(-basePose.y), z: deg(-basePose.z), duration: 0.2 });
                 if(bones.l_elbow) gsap.to(bones.l_elbow.rotation, { x: 0, y: 0, z: 0, duration: 0.2 });
 
@@ -197,12 +185,16 @@
                     processQueue(); 
                 }, 200); 
             } else {
-                // Η ουρά είναι άδεια.
                 is_busy = false; 
+                // Περιμένει 0.5s ησυχίας
                 idleTimer = setTimeout(() => {
                     if (gestureQueue.length === 0 && !is_busy) {
-                        resetPose(0.5); 
-                        // ΠΡΟΣΟΧΗ: Το κείμενο στην οθόνη ΔΕΝ σβήνεται πλέον! Παραμένει όπως στο βίντεο.
+                        resetPose(0.5); // Κατεβάζει τα χέρια (A-Pose)
+                        
+                        // ΚΑΙ ΕΚΕΙΝΗ ΤΗ ΣΤΙΓΜΗ ΚΑΘΑΡΙΖΕΙ ΤΗΝ ΟΘΟΝΗ ΚΑΙ ΤΗ ΜΝΗΜΗ
+                        final_transcript = "";
+                        last_processed_index = 0;
+                        document.getElementById('subtitle').innerText = "Ακούω...";
                     }
                 }, 500); 
             }
@@ -426,79 +418,79 @@
             }, 600);
         }
 
-        // --- ΤΟ ΑΠΟΛΥΤΟ ΑΣΤΑΜΑΤΗΤΟ ΜΙΚΡΟΦΩΝΟ ΜΕ ΜΝΗΜΗ ΟΘΟΝΗΣ ---
+        // --- ΤΟ ΑΠΟΛΥΤΟ ΑΣΤΑΜΑΤΗΤΟ ΜΙΚΡΟΦΩΝΟ ΜΕ ΚΕΡΣΟΡΑ ---
         const micBtn = document.getElementById('mic-btn');
         const subtitle = document.getElementById('subtitle');
         let recognition = null;
         let isListening = false;
-        
-        let sessionText = ""; 
-        let lastProcessedLength = 0; 
 
         if ('webkitSpeechRecognition' in window) {
             recognition = new webkitSpeechRecognition();
             recognition.lang = 'el-GR';
-            // Δεν σταματάει ποτέ
             recognition.continuous = true; 
-            // Βλέπεις τις λέξεις live όπως στο βίντεο της Python
             recognition.interimResults = true; 
 
             recognition.onresult = (event) => {
-                let currentText = "";
+                let current_final = "";
+                let current_interim = "";
                 
-                // Παίρνουμε ΟΛΟ το κείμενο που έχει ειπωθεί μέχρι τώρα σε αυτή τη συνεδρία (συνδυασμός final και interim)
-                for (let i = 0; i < event.results.length; ++i) {
-                    currentText += event.results[i][0].transcript.toLowerCase() + " ";
-                }
-                
-                // Δείχνουμε το κείμενο στην οθόνη. Επειδή είναι continuous, απλά μεγαλώνει συνεχώς.
-                subtitle.innerText = "Είπες: " + currentText;
-
-                // Απομονώνουμε μόνο το νέο κείμενο που ΔΕΝ έχουμε στείλει στην ουρά ακόμα!
-                let unprocessedText = currentText.substring(lastProcessedLength);
-
-                const keywords = {
-                    'efcharisto': ["ευχαριστώ", "ευχαριστω", "ευχαριστώ πολύ", "ευχαριστω πολυ"],
-                    'kalimera': ["καλημέρα", "καλημερα"],
-                    'mesimeri': ["καλό μεσημέρι", "καλο μεσημερι", "μεσημέρι", "μεσημερι"],
-                    'geia': ["γεια", "γειά", "χαίρετε"],
-                    'onoma': ["ποιο είναι το όνομά σου", "ποιο ειναι το ονομα σου", "όνομά σου", "ονομα σου", "όνομα", "ονομα", "ποιο", "ειναι", "σου"]
-                };
-
-                let matches = [];
-                
-                // Ψάχνουμε για λέξεις-κλειδιά μόνο στο νέο, αδιάβαστο κομμάτι
-                for (const [gesture, triggerWords] of Object.entries(keywords)) {
-                    triggerWords.forEach(word => {
-                        let idx = unprocessedText.indexOf(word);
-                        while (idx !== -1) {
-                            matches.push({ gesture: gesture, index: idx, length: word.length });
-                            idx = unprocessedText.indexOf(word, idx + word.length);
-                        }
-                    });
-                }
-                
-                matches.sort((a, b) => a.index - b.index);
-
-                let validMatches = [];
-                let tempEnd = 0;
-                
-                matches.forEach(match => {
-                    if (match.index >= tempEnd) {
-                        validMatches.push(match);
-                        tempEnd = match.index + match.length;
+                for (let i = event.resultIndex; i < event.results.length; ++i) {
+                    if (event.results[i].isFinal) {
+                        current_final += event.results[i][0].transcript.toLowerCase() + " ";
+                    } else {
+                        current_interim += event.results[i][0].transcript.toLowerCase() + " ";
                     }
-                });
+                }
+                
+                // Αποθηκεύουμε τα οριστικά στη δική μας, ασφαλή μνήμη
+                final_transcript += current_final;
+                
+                let displayText = final_transcript + current_interim;
+                if(displayText.trim() !== "") {
+                    subtitle.innerText = "Είπες: " + displayText;
+                }
 
-                if (validMatches.length > 0) {
-                    // Βάζουμε τις νέες λέξεις στην ουρά
-                    validMatches.forEach(match => {
-                        enqueueGesture(match.gesture);
-                    });
-                    
-                    // Κλειδώνουμε το μήκος του κειμένου που μόλις διαβάσαμε για να μην το ξαναδιαβάσουμε!
-                    let lastMatch = validMatches[validMatches.length - 1];
-                    lastProcessedLength += lastMatch.index + lastMatch.length;
+                // Διαβάζουμε ΜΟΝΟ το κείμενο που δεν έχουμε ελέγξει
+                let search_text = displayText.toLowerCase();
+                
+                let safety = 0;
+                while (safety < 10) {
+                    safety++;
+                    let unprocessed = search_text.substring(last_processed_index);
+                    let earliestMatch = null;
+                    let earliestIdx = Infinity;
+                    let matchLength = 0;
+
+                    const keywords = {
+                        'efcharisto': ["ευχαριστώ", "ευχαριστω", "ευχαριστώ πολύ", "ευχαριστω πολυ"],
+                        'kalimera': ["καλημέρα", "καλημερα"],
+                        'mesimeri': ["καλό μεσημέρι", "καλο μεσημερι", "μεσημέρι", "μεσημερι"],
+                        'geia': ["γεια", "γειά", "χαίρετε"],
+                        'onoma': ["ποιο είναι το όνομά σου", "ποιο ειναι το ονομα σου", "όνομά σου", "ονομα σου", "όνομα", "ονομα", "ποιο", "ειναι", "σου"]
+                    };
+
+                    for (const [gesture, triggerWords] of Object.entries(keywords)) {
+                        triggerWords.forEach(word => {
+                            let idx = unprocessed.indexOf(word);
+                            if (idx !== -1) {
+                                if (idx < earliestIdx) {
+                                    earliestIdx = idx;
+                                    earliestMatch = gesture;
+                                    matchLength = word.length;
+                                } else if (idx === earliestIdx && word.length > matchLength) {
+                                    earliestMatch = gesture;
+                                    matchLength = word.length;
+                                }
+                            }
+                        });
+                    }
+
+                    if (earliestMatch) {
+                        enqueueGesture(earliestMatch);
+                        last_processed_index += (earliestIdx + matchLength);
+                    } else {
+                        break; 
+                    }
                 }
             };
             
@@ -510,16 +502,12 @@
                 }
             };
             
-            // Το Hack: Αν για οποιοδήποτε λόγο ο browser το κλείσει (π.χ. πολύ ώρα ησυχία), ανοίγει ξανά!
+            // Αν κλείσει λόγω παύσης ή network error, κάνει ΑΜΕΣΩΣ επανεκκίνηση!
             recognition.onend = () => { 
                 if (isListening) {
-                    // Επειδή ξεκινάει νέα "συνεδρία" αναγνώρισης, μηδενίζουμε τον κέρσορα, 
-                    // ΑΛΛΑ κρατάμε το παλιό κείμενο (sessionText) για να μην σβηστεί από την οθόνη.
-                    sessionText = document.getElementById('subtitle').innerText.replace("Είπες: ", "") + " ";
-                    lastProcessedLength = 0; 
                     setTimeout(() => {
                         try { recognition.start(); } catch(e) {}
-                    }, 200); 
+                    }, 50); 
                 } 
             };
         }
@@ -527,8 +515,8 @@
         micBtn.onclick = () => {
             if (!isListening) {
                 isListening = true;
-                sessionText = ""; 
-                lastProcessedLength = 0;
+                final_transcript = ""; 
+                last_processed_index = 0;
                 try { recognition.start(); } catch(e) {}
                 micBtn.innerText = "🛑 Κλείσιμο";
                 micBtn.classList.add('listening');
