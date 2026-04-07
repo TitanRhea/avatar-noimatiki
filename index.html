@@ -296,6 +296,7 @@
                 let current_chunk = "";
                 for (let i = event.resultIndex; i < event.results.length; ++i) {
                     current_chunk += event.results[i][0].transcript.toLowerCase() + " ";
+                    if (event.results[i].isFinal) {recognition.abort();}
                 }
                 
                 let full_view = global_history + current_chunk;
@@ -325,7 +326,9 @@
             recognition.onend = () => { 
                 if (isListening) {
                     global_history = subtitle.innerText.replace("Είπες: ", "") + " ";
-                    //setTimeout(() => { try { recognition.start(); } catch(e) {} }, 100);
+
+                    recognition.start();
+                    recognition.start();
                 } 
             };
         }
