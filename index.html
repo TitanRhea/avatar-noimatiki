@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Web Avatar - Final Flow (No Delays & Accent Fix)</title>
+    <title>Web Avatar - Final Flow (Continuous Mic & Clean Transitions)</title>
     <style>
         body { margin: 0; overflow: hidden; background-color: #f0e6dc; font-family: 'Segoe UI', sans-serif; }
         #canvas-container { width: 100vw; height: 100vh; display: block; }
@@ -73,7 +73,7 @@
         const basePose = { x: 54, y: 30, z: 17 };
         const VOWEL_OPEN = { 'α': 115, 'ε': 105, 'η': 105, 'ι': 100, 'ο': 110, 'υ': 100, 'ω': 110 };
 
-        // === ΣΥΣΤΗΜΑ ΟΥΡΑΣ (ΧΩΡΙΣ ΚΑΘΥΣΤΕΡΗΣΕΙΣ) ===
+        // === ΣΥΣΤΗΜΑ ΟΥΡΑΣ ===
         let gestureQueue = [];
 
         function enqueueGesture(gestureName) {
@@ -172,19 +172,23 @@
             });
         }
 
-        // Η ΝΕΑ ΛΟΓΙΚΗ: Απόλυτο flow χωρίς χρονόμετρα και διακοπές
+        // --- Η ΝΕΑ ΛΟΓΙΚΗ ΓΙΑ ΤΙΣ ΜΕΤΑΒΑΣΕΙΣ ---
         function finalize_gesture() { 
             if (gestureQueue.length > 0) {
-                // Υπάρχει λέξη; Πήγαινε κατευθείαν εκεί!
-                is_busy = false; 
-                processQueue(); 
-            } else {
-                // Δεν υπάρχει άλλη λέξη; Τότε και ΜΟΝΟ τότε, κατέβασε χέρια.
-                resetPose(); 
+                // Υπάρχει λέξη: Κάνουμε ένα πολύ γρήγορο "ξεκαθάρισμα" των δαχτύλων/αρθρώσεων (0.3s)
+                // Έτσι δεν μπερδεύονται οι κινήσεις, αλλά το χέρι δεν προλαβαίνει να πέσει σε κατάσταση ηρεμίας.
+                resetPose(0.3); 
                 setTimeout(() => { 
                     is_busy = false; 
                     processQueue(); 
-                }, 600); // Περιμένει απλώς να ολοκληρωθεί το κατέβασμα των χεριών
+                }, 300); 
+            } else {
+                // Δεν υπάρχει λέξη: Επιστρέφει στην κανονική A-Pose αργά και ξεκουράζεται.
+                resetPose(0.5); 
+                setTimeout(() => { 
+                    is_busy = false; 
+                    processQueue(); 
+                }, 600); 
             }
         }
 
@@ -222,7 +226,7 @@
             if(j['index3']) gsap.to(j['index3'].rotation, {x: 0, y: 0, z: 0, duration: duration});
         }
 
-        // === ΚΙΝΗΣΕΙΣ (ΚΛΕΙΔΩΜΕΝΕΣ) ===
+        // === ΚΙΝΗΣΕΙΣ (ΑΠΟΛΥΤΑ ΚΛΕΙΔΩΜΕΝΕΣ) ===
 
         function gesture_efcharisto() {
             is_busy = true; 
@@ -404,7 +408,7 @@
             }, 600);
         }
 
-        // --- ΦΩΝΗΤΙΚΟΣ ΕΛΕΓΧΟΣ ---
+        // --- ΑΣΤΑΜΑΤΗΤΟΣ ΦΩΝΗΤΙΚΟΣ ΕΛΕΓΧΟΣ ---
         const micBtn = document.getElementById('mic-btn');
         const subtitle = document.getElementById('subtitle');
         let recognition = null;
@@ -413,14 +417,23 @@
         if ('webkitSpeechRecognition' in window) {
             recognition = new webkitSpeechRecognition();
             recognition.lang = 'el-GR';
-            recognition.continuous = false; 
+            // True για να μην σταματάει ποτέ να ακούει όσο μιλάς
+            recognition.continuous = true; 
+            // False για να στέλνει μόνο τα σίγουρα/τελικά αποτελέσματα και να μη διπλομετράει
             recognition.interimResults = false; 
 
             recognition.onresult = (event) => {
-                const text = event.results[0][0].transcript.toLowerCase().trim();
+                let text = "";
+                // Διαβάζουμε μόνο τα νέα κομμάτια ομιλίας από το σημείο που είχαμε μείνει
+                for (let i = event.resultIndex; i < event.results.length; ++i) {
+                    text += event.results[i][0].transcript.toLowerCase() + " ";
+                }
+                text = text.trim();
+                if (!text) return;
+                
                 subtitle.innerText = "Είπες: " + text;
 
-                // Προστέθηκαν ΟΛΕΣ οι τονισμένες λέξεις για να μην χάνει καμία καταγραφή!
+                // Οι λέξεις κλειδιά
                 const keywords = {
                     'efcharisto': ["ευχαριστώ", "ευχαριστω"],
                     'kalimera': ["καλημέρα", "καλημερα"],
@@ -456,6 +469,7 @@
                     }
                 });
 
+                // Στέλνουμε τις λέξεις στην ουρά
                 if (validMatches.length > 0) {
                     validMatches.forEach(match => {
                         enqueueGesture(match.gesture);
@@ -473,6 +487,7 @@
                 }
             };
             
+            // Αν για κάποιο λόγο κλείσει (π.χ. απόλυτη ησυχία για πολλή ώρα), το ξανανοίγει
             recognition.onend = () => { 
                 if (isListening) {
                     try { recognition.start(); } catch(e) {}
