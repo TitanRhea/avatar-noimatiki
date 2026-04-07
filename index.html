@@ -385,8 +385,9 @@ class ContinuousSpeechRecognition {
         
         const micBtn = document.getElementById('mic-btn');
         const subtitle = document.getElementById('subtitle');
-        /*let recognition = null;
+        
         let isListening = false;
+        /*let recognition = null;
         let session_buffer = "";
 
         if ('webkitSpeechRecognition' in window) {
@@ -459,13 +460,13 @@ class ContinuousSpeechRecognition {
         micBtn.onclick = () => {
             console.log("BUTTON!! CLICKED!!", isListening)
             if (!isListening) {
-                //isListening = true;
+                isListening = true;
                 global_history = ""; processed_length = 0;
                 //recognition.start();
                 speech.start();
                 micBtn.innerText = "🛑 Κλείσιμο"; micBtn.classList.add('listening');
             } else {
-                //isListening = false;
+                isListening = false;
                 //recognition.stop();
                 speech.stop()
                 micBtn.innerText = "🎙️ Ενεργοποίηση"; micBtn.classList.remove('listening');
