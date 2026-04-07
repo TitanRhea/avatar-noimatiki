@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Web Avatar - Final Gestures & Live Flow v22</title>
+    <title>Web Avatar - 0Final Custom Gestures v23 (Lip Sync Kalimera)</title>
     <style>
         body { margin: 0; overflow: hidden; background-color: #f0e6dc; font-family: 'Segoe UI', sans-serif; }
         #canvas-container { width: 100vw; height: 100vh; display: block; }
@@ -216,7 +216,7 @@
             if(j['index3']) gsap.to(j['index3'].rotation, {x: 0, y: 0, z: 0, duration: duration});
         }
 
-        // === ΚΙΝΗΣΕΙΣ (ΚΛΕΙΔΩΜΕΝΕΣ) ===
+        // === ΚΙΝΗΣΕΙΣ ===
 
         function gesture_efcharisto() {
             is_busy = true; speakWord("Ευχαριστώ", 1.8);
@@ -239,7 +239,18 @@
         }
 
         function gesture_kalimera() {
-            is_busy = true; speakWord("Καλημέρα", 1.5);
+            is_busy = true; 
+            
+            // ΝΕΟ: Custom Lip Sync βασισμένο στο βίντεο (Κα-λη-μέ-ρα)
+            if(bones.jaw) {
+                const jawTl = gsap.timeline();
+                jawTl.to(bones.jaw.rotation, { x: deg(110), duration: 0.2, ease: "sine.inOut" }) // Κα
+                     .to(bones.jaw.rotation, { x: deg(95), duration: 0.2, ease: "sine.inOut" })  // λη
+                     .to(bones.jaw.rotation, { x: deg(108), duration: 0.2, ease: "sine.inOut" }) // μέ
+                     .to(bones.jaw.rotation, { x: deg(116), duration: 0.25, ease: "sine.inOut" }) // ρα (μέγιστο άνοιγμα)
+                     .to(bones.jaw.rotation, { x: deg(90), duration: 0.2, ease: "sine.inOut" }); // κλείσιμο
+            }
+
             // ΦΑΣΗ 1
             if(bones.r_shoulder) gsap.to(bones.r_shoulder.rotation, { x: deg(70), y: deg(14), z: deg(-17), duration: 0.5 });
             if(bones.r_elbow) gsap.to(bones.r_elbow.rotation, { x: deg(108), y: deg(-31), z: deg(-69), duration: 0.5 });
@@ -381,7 +392,6 @@
 
                 let matches = [];
                 
-                // Ψάχνουμε τη φράση για ΟΛΕΣ τις εμφανίσεις των λέξεων-κλειδιών
                 for (const [gesture, triggerWords] of Object.entries(keywords)) {
                     triggerWords.forEach(word => {
                         let idx = text.indexOf(word);
@@ -392,8 +402,6 @@
                     });
                 }
                 
-                // Ταξινομούμε βάσει της σειράς που ειπώθηκαν.
-                // Αν 2 λέξεις-κλειδιά συμπίπτουν, κρατάμε τη μεγαλύτερη (π.χ. το "όνομά σου" υπερισχύει του "σου").
                 matches.sort((a, b) => {
                     if (a.index === b.index) return b.length - a.length;
                     return a.index - b.index;
@@ -402,7 +410,6 @@
                 let validMatches = [];
                 let lastEnd = 0;
                 
-                // Διώχνουμε τις λέξεις που "καβαλάνε" η μία την άλλη
                 matches.forEach(match => {
                     if (match.index >= lastEnd) {
                         validMatches.push(match);
@@ -410,13 +417,12 @@
                     }
                 });
 
-                // Αν βρήκαμε λέξεις, τις βάζουμε ΟΛΕΣ με τη σειρά στην ουρά!
                 if (validMatches.length > 0) {
                     validMatches.forEach(match => {
                         enqueueGesture(match.gesture);
                     });
                 } else {
-                    speakWord(text); // Lip sync για άσχετες λέξεις
+                    speakWord(text);
                 }
             };
             
