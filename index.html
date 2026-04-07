@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Web Avatar - Final Flow (Flawless Left Arm & Unstoppable Mic)</title>
+    <title>Web Avatar - Final Flow (Immortal Mic & Flawless 3D)</title>
     <style>
         body { margin: 0; overflow: hidden; background-color: #f0e6dc; font-family: 'Segoe UI', sans-serif; }
         #canvas-container { width: 100vw; height: 100vh; display: block; }
@@ -189,13 +189,11 @@
                 // Υπάρχει επόμενη λέξη! 
                 clearFingers(0.2); // Ισιώνει δάχτυλα
                 
-                // ΔΙΟΡΘΩΣΗ: Ισιώνει τους καρπούς (για να μην στραμπουλιούνται) 
+                // Ισιώνει τους καρπούς (για να μην στραμπουλιούνται) 
                 if(bones.r_wrist) gsap.to(bones.r_wrist.rotation, { x: 0, y: 0, z: 0, duration: 0.2 });
                 if(bones.l_wrist) gsap.to(bones.l_wrist.rotation, { x: 0, y: 0, z: 0, duration: 0.2 });
 
-                // ΔΙΟΡΘΩΣΗ: Κατεβάζει το ΑΡΙΣΤΕΡΟ χέρι στην A-Pose!
-                // Έτσι, αν μόλις έκανε το "Ευχαριστώ", το αριστερό χέρι φεύγει σωστά, 
-                // ενώ το δεξί παραμένει ψηλά για να πάει στη νέα λέξη!
+                // Κατεβάζει το ΑΡΙΣΤΕΡΟ χέρι στην A-Pose!
                 if(bones.l_shoulder) gsap.to(bones.l_shoulder.rotation, { x: deg(basePose.x), y: deg(-basePose.y), z: deg(-basePose.z), duration: 0.2 });
                 if(bones.l_elbow) gsap.to(bones.l_elbow.rotation, { x: 0, y: 0, z: 0, duration: 0.2 });
 
@@ -252,6 +250,7 @@
 
         function gesture_efcharisto() {
             is_busy = true; 
+            clearFingers(); 
             
             if(bones.jaw) {
                 const jawTl = gsap.timeline();
@@ -331,6 +330,7 @@
 
         function gesture_onoma() {
             is_busy = true; 
+            clearFingers(); 
 
             if(bones.jaw) {
                 const jawTl = gsap.timeline();
@@ -378,6 +378,7 @@
 
         function gesture_mesimeri() {
             is_busy = true; 
+            clearFingers(); 
             
             if(bones.jaw) {
                 const jawTl = gsap.timeline();
@@ -410,6 +411,7 @@
 
         function gesture_geia() {
             is_busy = true; 
+            clearFingers(); 
             
             if(bones.jaw) {
                 const jawTl = gsap.timeline();
@@ -428,83 +430,80 @@
             }, 600);
         }
 
-        // --- ΤΟ ΑΠΟΛΥΤΟ ΑΣΤΑΜΑΤΗΤΟ ΜΙΚΡΟΦΩΝΟ ---
+        // --- ΤΟ ΑΠΟΛΥΤΟ ΑΘΑΝΑΤΟ ΜΙΚΡΟΦΩΝΟ ---
         const micBtn = document.getElementById('mic-btn');
         const subtitle = document.getElementById('subtitle');
         let recognition = null;
         let isListening = false;
-        let parsedLength = 0; // Ο κέρσορας που εγγυάται ότι ΔΕΝ σταματάει ποτέ.
 
         if ('webkitSpeechRecognition' in window) {
             recognition = new webkitSpeechRecognition();
             recognition.lang = 'el-GR';
-            recognition.continuous = true; 
-            recognition.interimResults = true; 
-
-            recognition.onstart = () => {
-                parsedLength = 0; 
-            };
+            // Το γυρνάμε σε FALSE για να κόβει ΜΟΝΟ ΤΟΥ την πρόταση και να μην "μπουκώνει"
+            recognition.continuous = false; 
+            recognition.interimResults = false; 
 
             recognition.onresult = (event) => {
-                let currentText = "";
-                for(let i=0; i<event.results.length; i++) {
-                    currentText += event.results[i][0].transcript.toLowerCase() + " ";
-                }
+                let currentText = event.results[0][0].transcript.toLowerCase().trim();
+                if (!currentText) return;
                 
                 subtitle.innerText = "Είπες: " + currentText;
-
-                // Ελέγχει ΜΟΝΟ το νέο κείμενο που προστέθηκε (από τον κέρσορα και μετά)
-                let unprocessedText = currentText.substring(parsedLength);
-
-                let earliestMatch = null;
-                let earliestIdx = Infinity;
-                let matchLength = 0;
 
                 const keywords = {
                     'efcharisto': ["ευχαριστώ", "ευχαριστω", "ευχαριστώ πολύ", "ευχαριστω πολυ"],
                     'kalimera': ["καλημέρα", "καλημερα"],
-                    'mesimeri': ["καλό μεσημέρι", "καλο μεσημερι", "μεσημέρι", "μεσημερι"],
+                    'mesimeri': ["μεσημέρι", "μεσημερι", "καλό μεσημέρι", "καλο μεσημερι"],
                     'geia': ["γεια", "γειά", "χαίρετε"],
                     'onoma': ["ποιο είναι το όνομά σου", "ποιο ειναι το ονομα σου", "όνομά σου", "ονομα σου", "όνομα", "ονομα", "ποιο", "ειναι", "σου"]
                 };
 
-                // Βρίσκει την πρώτη λέξη κλειδί που εμφανίζεται στο νέο κείμενο
+                let matches = [];
+                
                 for (const [gesture, triggerWords] of Object.entries(keywords)) {
                     triggerWords.forEach(word => {
-                        let idx = unprocessedText.indexOf(word);
-                        if (idx !== -1 && idx < earliestIdx) {
-                            earliestIdx = idx;
-                            earliestMatch = gesture;
-                            matchLength = word.length;
-                        } else if (idx !== -1 && idx === earliestIdx && word.length > matchLength) {
-                            earliestMatch = gesture;
-                            matchLength = word.length;
+                        let idx = currentText.indexOf(word);
+                        while (idx !== -1) {
+                            matches.push({ gesture: gesture, index: idx, length: word.length });
+                            idx = currentText.indexOf(word, idx + word.length);
                         }
                     });
                 }
+                
+                matches.sort((a, b) => a.index - b.index);
 
-                // Αν βρήκε λέξη, την βάζει στην ουρά ΛΑΪΒ και μετακινεί τον κέρσορα. 
-                // Έτσι δεν "μπουκώνει" ποτέ και συνεχίζει να καταγράφει ασταμάτητα.
-                if (earliestMatch) {
-                    enqueueGesture(earliestMatch);
-                    parsedLength += earliestIdx + matchLength;
+                let validMatches = [];
+                let lastEnd = 0;
+                
+                matches.forEach(match => {
+                    if (match.index >= lastEnd) {
+                        validMatches.push(match);
+                        lastEnd = match.index + match.length;
+                    }
+                });
+
+                if (validMatches.length > 0) {
+                    validMatches.forEach(match => {
+                        enqueueGesture(match.gesture);
+                    });
+                } else {
+                    speakWord(currentText); 
                 }
             };
             
+            // Το Hack: Αδιαφορεί για ό,τι error κι αν βγάλει ο Chrome (π.χ. no-speech, network)
             recognition.onerror = (event) => { 
                 if (event.error === 'not-allowed') {
+                    // Μόνο αν του κόψεις την άδεια χρήσης θα σταματήσει πραγματικά
                     isListening = false; 
                     micBtn.classList.remove('listening'); 
                     micBtn.innerText = "🎙️ Ενεργοποίηση"; 
                 }
             };
             
-            // Αν ο Chrome προσπαθήσει να κλείσει το μικρόφωνο επειδή σταμάτησες να μιλάς, το ανοίγει ΞΑΝΑ αμέσως!
+            // Το Hack Part 2: Μόλις κλείσει (από error ή επειδή τελείωσε η πρόταση), ΞΑΝΑΝΟΙΓΕΙ ΑΜΕΣΩΣ!
             recognition.onend = () => { 
                 if (isListening) {
-                    setTimeout(() => {
-                        try { recognition.start(); } catch(e) {}
-                    }, 200); 
+                    try { recognition.start(); } catch(e) {}
                 } 
             };
         }
@@ -517,7 +516,7 @@
                 micBtn.classList.add('listening');
                 subtitle.innerText = "Ακούω...";
             } else {
-                isListening = false;
+                isListening = false; // Εδώ κόβεται οριστικά ο κύκλος
                 recognition.stop();
                 micBtn.innerText = "🎙️ Ενεργοποίηση";
                 micBtn.classList.remove('listening');
