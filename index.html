@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Web Avatar - Final Flow (Perfect Continuous Gestures)</title>
+    <title>Web Avatar - Final Flow (Perfect Transitions & Endless Mic)</title>
     <style>
         body { margin: 0; overflow: hidden; background-color: #f0e6dc; font-family: 'Segoe UI', sans-serif; }
         #canvas-container { width: 100vw; height: 100vh; display: block; }
@@ -73,13 +73,13 @@
         const basePose = { x: 54, y: 30, z: 17 };
         const VOWEL_OPEN = { 'α': 115, 'ε': 105, 'η': 105, 'ι': 100, 'ο': 110, 'υ': 100, 'ω': 110 };
 
-        // === ΣΥΣΤΗΜΑ ΟΥΡΑΣ ΚΑΙ ΧΡΟΝΟΜΕΤΡΟΥ ===
+        // === ΣΥΣΤΗΜΑ ΟΥΡΑΣ ===
         let gestureQueue = [];
-        let idleTimer = null; // Χρονόμετρο για την A-Pose
+        let idleTimer = null; 
 
         function enqueueGesture(gestureName) {
             gestureQueue.push(gestureName);
-            clearTimeout(idleTimer); // Μόλις μπει νέα λέξη, ακυρώνουμε το κατέβασμα των χεριών
+            clearTimeout(idleTimer); 
             if (!is_busy) {
                 processQueue();
             }
@@ -88,7 +88,7 @@
         function processQueue() {
             if (is_busy || gestureQueue.length === 0) return;
             
-            clearTimeout(idleTimer); // Διπλή σιγουριά
+            clearTimeout(idleTimer); 
 
             let nextGesture = gestureQueue.shift();
             if (nextGesture === 'efcharisto') gesture_efcharisto();
@@ -176,19 +176,21 @@
             });
         }
 
-        // --- Η ΝΕΑ ΕΞΥΠΝΗ ΛΟΓΙΚΗ ΓΙΑ ΤΙΣ ΜΕΤΑΒΑΣΕΙΣ (ΧΩΡΙΣ RESETPOSE ΕΝΔΙΑΜΕΣΑ) ---
+        // --- Η ΝΕΑ ΛΟΓΙΚΗ ΕΠΑΝΑΦΟΡΑΣ ΜΕ ΓΡΗΓΟΡΟ "ΚΑΘΑΡΙΣΜΑ" ---
         function finalize_gesture() { 
             if (gestureQueue.length > 0) {
-                // Υπάρχει λέξη στην ουρά. Κάνει ΑΠΛΩΣ παύση 0.2 δευτερόλεπτα (ΧΩΡΙΣ reset) και πάει κατευθείαν στην επόμενη.
+                // Υπάρχει λέξη στην ουρά. Κάνουμε ένα γρήγορο καθάρισμα αρθρώσεων (0.4s) 
+                // ώστε να μην στραμπουληχτούν τα δάχτυλα/αγκώνες στην επόμενη κίνηση!
+                resetPose(0.4); 
                 setTimeout(() => { 
                     is_busy = false; 
                     processQueue(); 
-                }, 200); 
+                }, 450); // Δίνουμε 450ms για να ολοκληρωθεί πλήρως το καθάρισμα πριν μπει η νέα λέξη
             } else {
-                // Η ουρά άδειασε. Περιμένει 0.5 δευτερόλεπτα. 
+                // Η ουρά άδειασε. Ξεκινάει ο μετρητής ησυχίας (0.5s).
                 is_busy = false; 
                 idleTimer = setTimeout(() => {
-                    // Αν στον ενδιάμεσο χρόνο δεν μπήκε καμία νέα λέξη, τότε κατεβαίνει στην A-Pose.
+                    // Αν περάσει το 0.5s και δεν μπήκε άλλη λέξη, τότε ξεκουράζει τα χέρια (A-Pose).
                     if (gestureQueue.length === 0 && !is_busy) {
                         resetPose(0.5); 
                     }
@@ -412,29 +414,38 @@
             }, 600);
         }
 
-        // --- ΑΣΤΑΜΑΤΗΤΟΣ ΦΩΝΗΤΙΚΟΣ ΕΛΕΓΧΟΣ ---
+        // --- ΑΣΤΑΜΑΤΗΤΟΣ ΦΩΝΗΤΙΚΟΣ ΕΛΕΓΧΟΣ (FIXED) ---
         const micBtn = document.getElementById('mic-btn');
         const subtitle = document.getElementById('subtitle');
         let recognition = null;
         let isListening = false;
+        let lastProcessedIndex = -1; // Αποτρέπει το διάβασμα των ίδιων λέξεων δύο φορές!
 
         if ('webkitSpeechRecognition' in window) {
             recognition = new webkitSpeechRecognition();
             recognition.lang = 'el-GR';
-            // Απόλυτο Continuous: Το μικρόφωνο δεν κλείνει ΠΟΤΕ!
+            // Το μικρόφωνο παραμένει ανοιχτό και ακούει συνεχόμενα χωρίς διακοπή
             recognition.continuous = true; 
             recognition.interimResults = false; 
+            
+            recognition.onstart = () => {
+                lastProcessedIndex = -1; // Κάθε φορά που ξεκινάει, μηδενίζουμε τον μνήμονα
+            };
 
             recognition.onresult = (event) => {
-                let text = "";
-                // Το index παίρνει πάντα μόνο τη ΝΕΑ φράση που μόλις άκουσε, ώστε να μην επαναλαμβάνει τα παλιά.
+                let newText = "";
+                
+                // Παίρνουμε ΜΟΝΟ τα νέα κομμάτια που μόλις άκουσε
                 for (let i = event.resultIndex; i < event.results.length; ++i) {
-                    text += event.results[i][0].transcript.toLowerCase() + " ";
+                    if (i > lastProcessedIndex && event.results[i].isFinal) {
+                        newText += event.results[i][0].transcript.toLowerCase() + " ";
+                        lastProcessedIndex = i; // Ενημερώνουμε ότι τα διαβάσαμε
+                    }
                 }
-                text = text.trim();
-                if (!text) return;
+                newText = newText.trim();
+                if (!newText) return;
 
-                subtitle.innerText = "Είπες: " + text;
+                subtitle.innerText = "Είπες: " + newText;
 
                 const keywords = {
                     'efcharisto': ["ευχαριστώ", "ευχαριστω"],
@@ -448,10 +459,10 @@
                 
                 for (const [gesture, triggerWords] of Object.entries(keywords)) {
                     triggerWords.forEach(word => {
-                        let idx = text.indexOf(word);
+                        let idx = newText.indexOf(word);
                         while (idx !== -1) {
                             matches.push({ gesture: gesture, index: idx, length: word.length });
-                            idx = text.indexOf(word, idx + word.length);
+                            idx = newText.indexOf(word, idx + word.length);
                         }
                     });
                 }
@@ -476,7 +487,7 @@
                         enqueueGesture(match.gesture);
                     });
                 } else {
-                    speakWord(text); 
+                    speakWord(newText); 
                 }
             };
             
