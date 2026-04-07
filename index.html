@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Web Avatar - Final Flow (Perfect Transitions & Endless Mic)</title>
+    <title>Web Avatar - Fix Queue Transitions</title>
     <style>
         body { margin: 0; overflow: hidden; background-color: #f0e6dc; font-family: 'Segoe UI', sans-serif; }
         #canvas-container { width: 100vw; height: 100vh; display: block; }
@@ -73,7 +73,7 @@
         const basePose = { x: 54, y: 30, z: 17 };
         const VOWEL_OPEN = { 'α': 115, 'ε': 105, 'η': 105, 'ι': 100, 'ο': 110, 'υ': 100, 'ω': 110 };
 
-        // === ΣΥΣΤΗΜΑ ΟΥΡΑΣ ===
+        // === ΣΥΣΤΗΜΑ ΟΥΡΑΣ ΚΑΙ ΧΡΟΝΟΜΕΤΡΟΥ ===
         let gestureQueue = [];
         let idleTimer = null; 
 
@@ -176,25 +176,20 @@
             });
         }
 
-        // --- Η ΝΕΑ ΛΟΓΙΚΗ ΕΠΑΝΑΦΟΡΑΣ ΜΕ ΓΡΗΓΟΡΟ "ΚΑΘΑΡΙΣΜΑ" ---
+        // --- Η ΝΕΑ ΛΟΓΙΚΗ ΕΠΑΝΑΦΟΡΑΣ ΜΕ ΠΑΝΤΑ RESETPOSE ---
         function finalize_gesture() { 
+            // Κάνουμε resetPose σε κάθε περίπτωση για να "καθαρίσουν" οι αρθρώσεις
+            resetPose(0.4); 
+            
             if (gestureQueue.length > 0) {
-                // Υπάρχει λέξη στην ουρά. Κάνουμε ένα γρήγορο καθάρισμα αρθρώσεων (0.4s) 
-                // ώστε να μην στραμπουληχτούν τα δάχτυλα/αγκώνες στην επόμενη κίνηση!
-                resetPose(0.4); 
+                // Υπάρχει λέξη στην ουρά: περιμένουμε λίγο να ολοκληρωθεί το resetPose και συνεχίζουμε
                 setTimeout(() => { 
                     is_busy = false; 
                     processQueue(); 
-                }, 450); // Δίνουμε 450ms για να ολοκληρωθεί πλήρως το καθάρισμα πριν μπει η νέα λέξη
+                }, 400); 
             } else {
-                // Η ουρά άδειασε. Ξεκινάει ο μετρητής ησυχίας (0.5s).
+                // Η ουρά άδειασε.
                 is_busy = false; 
-                idleTimer = setTimeout(() => {
-                    // Αν περάσει το 0.5s και δεν μπήκε άλλη λέξη, τότε ξεκουράζει τα χέρια (A-Pose).
-                    if (gestureQueue.length === 0 && !is_busy) {
-                        resetPose(0.5); 
-                    }
-                }, 500); 
             }
         }
 
