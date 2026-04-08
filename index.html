@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Web Avatar - Final Flow (Rhea & Titan Support)</title>
+    <title>Web Avatar - Final Flow (Titan Mesimeri Fix)</title>
     <style>
         body { margin: 0; overflow: hidden; background-color: #f0e6dc; font-family: 'Segoe UI', sans-serif; }
         #canvas-container { width: 100vw; height: 100vh; display: block; }
@@ -67,6 +67,7 @@
         scene.add(light);
 
         let currentModel = null, bones = {}, is_busy = false;
+        let isTitan = false; // Νέα μεταβλητή για να ξεχωρίζουμε τα μοντέλα
         const deg = (d) => d * (Math.PI / 180);
         const basePose = { x: 54, y: 30, z: 17 };
         const VOWEL_OPEN = { 'α': 115, 'ε': 105, 'η': 105, 'ι': 100, 'ο': 110, 'υ': 100, 'ω': 110 };
@@ -102,6 +103,8 @@
 
         function loadAvatar(file) {
             const finalPath = file + "?v=" + Date.now();
+            isTitan = file.includes('titan'); // Ελέγχουμε αν είναι ο Titan
+            
             if (currentModel) scene.remove(currentModel);
             bones = { r_fingers: [], l_fingers: [], r_joints: {}, l_joints: {} }; 
             
@@ -118,7 +121,7 @@
                         const bLower = bName.toLowerCase();
                         if (bLower.includes('jaw')) bones.jaw = n;
                         
-                        // ΥΠΟΣΤΗΡΙΞΗ ΚΑΙ ΓΙΑ ΤΑ ΔΥΟ ΜΟΝΤΕΛΑ (mixamorig6 = Rhea, mixamorig9 = Titan)
+                        // ΥΠΟΣΤΗΡΙΞΗ ΚΑΙ ΓΙΑ ΤΑ ΔΥΟ ΜΟΝΤΕΛΑ
                         if (bName === 'mixamorig6RightArm' || bName === 'mixamorig9RightArm') bones.r_shoulder = n;
                         if (bName === 'mixamorig6RightForeArm' || bName === 'mixamorig9RightForeArm') bones.r_elbow = n;
                         if (bName === 'mixamorig6RightHand' || bName === 'mixamorig9RightHand') bones.r_wrist = n;
@@ -126,7 +129,6 @@
                         if (bName === 'mixamorig6LeftForeArm' || bName === 'mixamorig9LeftForeArm') bones.l_elbow = n;
                         if (bName === 'mixamorig6LeftHand' || bName === 'mixamorig9LeftHand') bones.l_wrist = n;
                         
-                        // Τα δάχτυλα δούλευαν ήδη γιατί ο κώδικας ψάχνει απλά τις λέξεις (thumb, index κλπ)
                         const match = bLower.match(/(thumb|index|middle|ring|pinky)(\d)/);
                         if (match) {
                             if (bLower.includes('right')) { bones.r_joints[match[0]] = n; bones.r_fingers.push(n); } 
@@ -140,7 +142,7 @@
                     if (bones.jaw) bones.jaw.rotation.x = deg(90);
                     
                     if(bones.r_shoulder) {
-                        let avatarName = file.includes('titan') ? 'Titan' : 'Rhea';
+                        let avatarName = isTitan ? 'Titan' : 'Rhea';
                         document.getElementById('subtitle').innerText = avatarName + ": Σύστημα Έτοιμο!";
                     }
                 }, 400);
@@ -361,13 +363,22 @@
                      .to(bones.jaw.rotation, { x: deg(90), duration: 0.3, ease: "sine.inOut" }); 
             }
             
-            if(bones.r_shoulder) gsap.to(bones.r_shoulder.rotation, { x: deg(70), y: deg(14), z: deg(-17), duration: 0.5 });
-            if(bones.r_elbow) gsap.to(bones.r_elbow.rotation, { x: deg(108), y: deg(-31), z: deg(-69), duration: 0.5 });
+            // ΒΗΜΑ 1: Ανασήκωμα Χεριού
+            let sh_start = isTitan ? { x: deg(60), y: deg(14), z: deg(-25) } : { x: deg(70), y: deg(14), z: deg(-17) };
+            let el_start = isTitan ? { x: deg(90), y: deg(-31), z: deg(-85) } : { x: deg(108), y: deg(-31), z: deg(-69) };
+            
+            if(bones.r_shoulder) gsap.to(bones.r_shoulder.rotation, { x: sh_start.x, y: sh_start.y, z: sh_start.z, duration: 0.5 });
+            if(bones.r_elbow) gsap.to(bones.r_elbow.rotation, { x: el_start.x, y: el_start.y, z: el_start.z, duration: 0.5 });
             if(bones.r_wrist) gsap.to(bones.r_wrist.rotation, { x: 0, y: 0, z: 0, duration: 0.5 });
 
             setTimeout(() => {
-                if(bones.r_shoulder) gsap.to(bones.r_shoulder.rotation, { x: deg(60), y: deg(-10), z: deg(-43), duration: 0.5 });
-                if(bones.r_elbow) gsap.to(bones.r_elbow.rotation, { x: deg(43), y: deg(-38), z: deg(-83), duration: 0.5 });
+                // ΒΗΜΑ 2: Χέρι στο Πηγούνι
+                // Εδώ φέρνουμε το χέρι του Titan πιο κοντά (μικρότερο Χ και μεγαλύτερο αρνητικό Ζ)
+                let sh_main = isTitan ? { x: deg(50), y: deg(-10), z: deg(-55) } : { x: deg(60), y: deg(-10), z: deg(-43) };
+                let el_main = isTitan ? { x: deg(25), y: deg(-38), z: deg(-105) } : { x: deg(43), y: deg(-38), z: deg(-83) };
+
+                if(bones.r_shoulder) gsap.to(bones.r_shoulder.rotation, { x: sh_main.x, y: sh_main.y, z: sh_main.z, duration: 0.5 });
+                if(bones.r_elbow) gsap.to(bones.r_elbow.rotation, { x: el_main.x, y: el_main.y, z: el_main.z, duration: 0.5 });
                 
                 if(bones.r_wrist) {
                     gsap.to(bones.r_wrist.rotation, { x: deg(-43), y: deg(-21), z: deg(-68), duration: 0.5 });
