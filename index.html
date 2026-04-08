@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Web Avatar - Final Flow (Titan Mesimeri Fix)</title>
+    <title>Web Avatar - Final Flow v59 (Titan Mesimeri Pose Fix)</title>
     <style>
         body { margin: 0; overflow: hidden; background-color: #f0e6dc; font-family: 'Segoe UI', sans-serif; }
         #canvas-container { width: 100vw; height: 100vh; display: block; }
@@ -373,9 +373,10 @@
 
             setTimeout(() => {
                 // ΒΗΜΑ 2: Χέρι στο Πηγούνι
-                // Εδώ φέρνουμε το χέρι του Titan πιο κοντά (μικρότερο Χ και μεγαλύτερο αρνητικό Ζ)
-                let sh_main = isTitan ? { x: deg(50), y: deg(-10), z: deg(-55) } : { x: deg(60), y: deg(-10), z: deg(-43) };
-                let el_main = isTitan ? { x: deg(25), y: deg(-38), z: deg(-105) } : { x: deg(43), y: deg(-38), z: deg(-83) };
+                // Εδώ φέρνουμε το χέρι του Titan πολύ πιο κοντά στο πρόσωπο
+                // Μειώνουμε το Χ του ώμου, λυγίζουμε περισσότερο τον αγκώνα και το Ζ του
+                let sh_main = isTitan ? { x: deg(40), y: deg(-10), z: deg(-65) } : { x: deg(60), y: deg(-10), z: deg(-43) };
+                let el_main = isTitan ? { x: deg(15), y: deg(-38), z: deg(-115) } : { x: deg(43), y: deg(-38), z: deg(-83) };
 
                 if(bones.r_shoulder) gsap.to(bones.r_shoulder.rotation, { x: sh_main.x, y: sh_main.y, z: sh_main.z, duration: 0.5 });
                 if(bones.r_elbow) gsap.to(bones.r_elbow.rotation, { x: el_main.x, y: el_main.y, z: el_main.z, duration: 0.5 });
