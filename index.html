@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Web Avatar - Universal Mic v51 (Brave/Chrome/Safari)</title>
+    <title>Web Avatar - Final Flow v52 (Locked Memory & Logic)</title>
     <style>
         body { margin: 0; overflow: hidden; background-color: #f0e6dc; font-family: 'Segoe UI', sans-serif; }
         #canvas-container { width: 100vw; height: 100vh; display: block; }
@@ -69,17 +69,13 @@
         let currentModel = null, bones = {}, is_busy = false;
         const deg = (d) => d * (Math.PI / 180);
         const basePose = { x: 54, y: 30, z: 17 };
-        const VOWEL_OPEN = { 'α': 115, 'ε': 105, 'η': 105, 'ι': 100, 'ο': 110, 'υ': 100, 'ω': 110 };
 
         let gestureQueue = [];
         let idleTimer = null; 
-        let full_transcript = "";
-        let display_offset = 0;
-        let processed_index = 0;
+        let displayBuffer = ""; 
 
         function enqueueGesture(gestureName) {
             gestureQueue.push(gestureName);
-            clearTimeout(idleTimer); 
             if (!is_busy) processQueue();
         }
 
@@ -89,9 +85,9 @@
             let next = gestureQueue.shift();
             if (next === 'efcharisto') gesture_efcharisto();
             else if (next === 'kalimera') gesture_kalimera();
-            else if (next === 'mesimeri') gesture_mesimeri();
-            else if (next === 'geia') gesture_geia();
-            else if (next === 'onoma') gesture_onoma();
+            else if (nextGesture === 'mesimeri') gesture_mesimeri();
+            else if (nextGesture === 'geia') gesture_geia();
+            else if (nextGesture === 'onoma') gesture_onoma();
         }
 
         const loader = new THREE.GLTFLoader();
@@ -138,14 +134,9 @@
             bones.r_fingers.concat(bones.l_fingers).forEach(f => gsap.to(f.rotation, { x:0, y:0, z:0, duration: speed }));
         }
 
-        function clearFingers(speed = 0.2) {
-            bones.r_fingers.concat(bones.l_fingers).forEach(f => gsap.to(f.rotation, { x:0, y:0, z:0, duration: speed }));
-        }
-
         function finalize_gesture() { 
             if (gestureQueue.length > 0) {
-                clearFingers(0.2); 
-                if(bones.r_wrist) gsap.to(bones.r_wrist.rotation, { x: 0, y: 0, z: 0, duration: 0.2 });
+                bones.r_fingers.concat(bones.l_fingers).forEach(f => gsap.to(f.rotation, { x:0, y:0, z:0, duration: 0.2 }));
                 if(bones.l_shoulder) gsap.to(bones.l_shoulder.rotation, { x: deg(basePose.x), y: deg(-basePose.y), z: deg(-basePose.z), duration: 0.2 });
                 setTimeout(() => { is_busy = false; processQueue(); }, 200); 
             } else {
@@ -153,34 +144,32 @@
                 idleTimer = setTimeout(() => {
                     if (gestureQueue.length === 0 && !is_busy) {
                         resetPose(0.5); 
-                        display_offset = full_transcript.length;
+                        displayBuffer = ""; // ΚΑΘΑΡΙΣΜΟΣ ΣΤΗΝ A-POSE
                         document.getElementById('subtitle').innerText = "Ακούω...";
                     }
                 }, 500); 
             }
         }
 
-        // --- ΚΛΕΙΔΩΜΕΝΕΣ ΚΙΝΗΣΕΙΣ ---
+        // --- ΚΙΝΗΣΕΙΣ (LOCKED) ---
         function customFist(duration = 0.1) {
-            bones.r_fingers.concat(bones.l_fingers).forEach(f => {
-                if(f.name.includes('1')) gsap.to(f.rotation, { x: deg(50), duration: duration });
-            });
+            bones.r_fingers.concat(bones.l_fingers).forEach(f => { if(f.name.includes('1')) gsap.to(f.rotation, { x: deg(50), duration: duration }); });
         }
 
         function gesture_efcharisto() {
-            is_busy = true; clearFingers();
+            is_busy = true; 
             if(bones.r_shoulder) gsap.to(bones.r_shoulder.rotation, { x: deg(27), y: deg(-35), z: deg(-26), duration: 0.5 });
             if(bones.r_elbow) gsap.to(bones.r_elbow.rotation, { x: deg(25), y: deg(-26), z: deg(-107), duration: 0.5 });
             setTimeout(() => {
                 if(bones.r_shoulder) gsap.to(bones.r_shoulder.rotation, { x: deg(52), y: deg(-27), z: deg(-24), duration: 0.5 });
                 if(bones.l_shoulder) gsap.to(bones.l_shoulder.rotation, { x: deg(52), y: deg(27), z: deg(24), duration: 0.5 });
                 const pulse = gsap.timeline({ repeat: 2, onComplete: finalize_gesture });
-                pulse.to({}, { duration: 0.1, onStart: () => customFist(0.1) }).to({}, { duration: 0.15 }).to({}, { duration: 0.1, onStart: () => clearFingers(0.1) }).to({}, { duration: 0.15 });
+                pulse.to({}, { duration: 0.1, onStart: () => customFist(0.1) }).to({}, { duration: 0.15 }).to({}, { duration: 0.1, onStart: () => resetPose(0.1) }).to({}, { duration: 0.15 }); 
             }, 600);
         }
 
         function gesture_kalimera() {
-            is_busy = true; 
+            is_busy = true;
             if(bones.r_shoulder) gsap.to(bones.r_shoulder.rotation, { x: deg(70), y: deg(14), z: deg(-17), duration: 0.5 });
             if(bones.r_elbow) gsap.to(bones.r_elbow.rotation, { x: deg(108), y: deg(-31), z: deg(-69), duration: 0.5 });
             setTimeout(() => {
@@ -194,105 +183,46 @@
             }, 600);
         }
 
-        function gesture_mesimeri() {
-            is_busy = true; clearFingers();
-            if(bones.r_shoulder) gsap.to(bones.r_shoulder.rotation, { x: deg(70), y: deg(14), z: deg(-17), duration: 0.5 });
-            setTimeout(() => {
-                if(bones.r_shoulder) gsap.to(bones.r_shoulder.rotation, { x: deg(60), y: deg(-10), z: deg(-43), duration: 0.5 });
-                if(bones.r_elbow) gsap.to(bones.r_elbow.rotation, { x: deg(43), y: deg(-38), z: deg(-83), duration: 0.5 });
-                if(bones.r_wrist) {
-                    gsap.to(bones.r_wrist.rotation, { x: deg(-43), y: deg(-21), z: deg(-68), duration: 0.5 });
-                    const tl = gsap.timeline({ repeat: 2, onComplete: finalize_gesture });
-                    tl.to(bones.r_wrist.rotation, { z: deg(-43), duration: 0.4 }).to(bones.r_wrist.rotation, { z: deg(-93), duration: 0.4 });
-                } else finalize_gesture();
-            }, 600);
-        }
-
-        function gesture_geia() {
-            is_busy = true; clearFingers();
-            if(bones.r_shoulder) gsap.to(bones.r_shoulder.rotation, { x: deg(11), y: deg(18), z: deg(4), duration: 0.5 });
-            if(bones.r_elbow) gsap.to(bones.r_elbow.rotation, { x: deg(-10), y: deg(35), z: deg(-128), duration: 0.5 });
-            setTimeout(() => {
-                const tl = gsap.timeline({ repeat: 4, onComplete: finalize_gesture });
-                tl.to(bones.r_wrist.rotation, { z: deg(25), duration: 0.25 }).to(bones.r_wrist.rotation, { z: deg(-25), duration: 0.25 });
-            }, 600);
-        }
-
-        function gesture_onoma() {
-            is_busy = true; clearFingers();
-            if(bones.r_shoulder) gsap.to(bones.r_shoulder.rotation, { x: deg(50), y: deg(-15), z: deg(-70), duration: 0.5 });
-            setTimeout(() => {
-                if(bones.r_shoulder) gsap.to(bones.r_shoulder.rotation, { x: deg(25), y: deg(7), z: deg(-51), duration: 0.5 });
-                if(bones.l_shoulder) gsap.to(bones.l_shoulder.rotation, { x: deg(25), y: deg(-7), z: deg(51), duration: 0.5 });
-                let start = Date.now();
-                const draw = () => {
-                    let el = (Date.now() - start) / 1000;
-                    if (el < 3) {
-                        bones.r_wrist.rotation.x = Math.sin(el * 11) * 0.3;
-                        bones.l_wrist.rotation.x = Math.sin(el * 11) * 0.3;
-                        requestAnimationFrame(draw);
-                    } else finalize_gesture();
-                };
-                draw();
-            }, 800);
-        }
-
-        // === UNIVERSAL SPEECH ENGINE (Brave/Chrome Support) ===
+        // --- IMMORTAL MIC (v52) ---
         const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
         const micBtn = document.getElementById('mic-btn');
         const subtitle = document.getElementById('subtitle');
-        let recognition = null;
-        let isListening = false;
+        let recognition = null, isListening = false;
 
         if (SpeechRecognition) {
             recognition = new SpeechRecognition();
             recognition.lang = 'el-GR';
-            recognition.continuous = true;
-            recognition.interimResults = true;
+            recognition.continuous = false; // Αποφυγή υπερευαισθησίας
+            recognition.interimResults = false; 
 
             recognition.onresult = (event) => {
-                let current_chunk = "";
-                for (let i = event.resultIndex; i < event.results.length; ++i) {
-                    current_chunk += event.results[i][0].transcript.toLowerCase() + " ";
-                }
-                
-                full_transcript += current_chunk;
-                let visible = full_transcript.substring(display_offset).trim();
-                if (visible) subtitle.innerText = "Είπες: " + visible;
+                const text = event.results[0][0].transcript.toLowerCase().trim();
+                displayBuffer += (displayBuffer === "" ? "" : " ") + text;
+                subtitle.innerText = "Είπες: " + displayBuffer;
 
-                const keywords = {
-                    'efcharisto': ["ευχαριστώ", "ευχαριστω"],
-                    'kalimera': ["καλημέρα", "καλημερα"],
-                    'mesimeri': ["μεσημέρι", "μεσημερι", "καλό μεσημέρι", "καλο μεσημερι"],
-                    'geia': ["γεια", "γειά"],
-                    'onoma': ["όνομά σου", "ονομα σου"]
+                const map = {
+                    'ευχαριστώ': 'efcharisto', 'καλημέρα': 'kalimera', 
+                    'μεσημέρι': 'mesimeri', 'γεια': 'geia', 'όνομα': 'onoma'
                 };
-
-                let search_text = full_transcript.substring(processed_index);
-                for (const [gest, words] of Object.entries(keywords)) {
-                    words.forEach(w => {
-                        if (search_text.includes(w)) {
-                            enqueueGesture(gest);
-                            processed_index += (search_text.indexOf(w) + w.length);
-                            search_text = full_transcript.substring(processed_index);
-                        }
-                    });
-                }
+                
+                Object.keys(map).forEach(key => {
+                    if (text.includes(key)) enqueueGesture(map[key]);
+                });
             };
 
-            recognition.onerror = (e) => { console.warn("Mic Error:", e.error); };
-            
-            recognition.onend = () => {
+            recognition.onend = () => { 
                 if (isListening) {
-                    setTimeout(() => { try { recognition.start(); } catch(e) {} }, 50);
-                }
+                    setTimeout(() => { try { recognition.start(); } catch(e) {} }, 10);
+                } 
             };
+            
+            recognition.onerror = () => { if(isListening) recognition.stop(); };
         }
 
         micBtn.onclick = () => {
             if (!isListening) {
-                isListening = true; full_transcript = ""; processed_index = 0; display_offset = 0;
-                try { recognition.start(); } catch(e) { alert("Η αναγνώριση φωνής δεν υποστηρίζεται ή είναι μπλοκαρισμένη."); }
+                isListening = true; displayBuffer = "";
+                try { recognition.start(); } catch(e) {}
                 micBtn.innerText = "🛑 Κλείσιμο"; micBtn.classList.add('listening');
             } else {
                 isListening = false; recognition.stop();
