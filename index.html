@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Web Avatar - Final Flow v38 (Flawless Left Arm & Unstoppable Mic) + v52 Mic Logic</title>
+    <title>Web Avatar - Final Flow v56 (Locked & Perfect Dictionary)</title>
     <style>
         body { margin: 0; overflow: hidden; background-color: #f0e6dc; font-family: 'Segoe UI', sans-serif; }
         #canvas-container { width: 100vw; height: 100vh; display: block; }
@@ -15,7 +15,7 @@
             font-size: 22px; color: #333; background: rgba(255, 255, 255, 0.95);
             padding: 12px 25px; border-radius: 20px; display: inline-block; 
             margin-bottom: 15px; font-weight: bold; box-shadow: 0 4px 15px rgba(0,0,0,0.1);
-            min-width: 380px; max-width: 85%; word-wrap: break-word; pointer-events: none;
+            min-width: 380px; max-width: 80%; word-wrap: break-word; pointer-events: none;
         }
         .controls { display: flex; justify-content: center; gap: 10px; align-items: center; pointer-events: auto;}
         button { 
@@ -68,15 +68,14 @@
 
         let currentModel = null, bones = {}, is_busy = false;
         const deg = (d) => d * (Math.PI / 180);
-        
-        // Η Α-Pose
         const basePose = { x: 54, y: 30, z: 17 };
         const VOWEL_OPEN = { 'α': 115, 'ε': 105, 'η': 105, 'ι': 100, 'ο': 110, 'υ': 100, 'ω': 110 };
 
-        // === ΣΥΣΤΗΜΑ ΟΥΡΑΣ ===
         let gestureQueue = [];
         let idleTimer = null; 
-        let displayBuffer = ""; // Η μνήμη οθόνης για την v52 λογική
+        
+        // Απλή μνήμη οθόνης για το "Notepad Effect"
+        let displayBuffer = ""; 
 
         function enqueueGesture(gestureName) {
             gestureQueue.push(gestureName);
@@ -88,7 +87,6 @@
 
         function processQueue() {
             if (is_busy || gestureQueue.length === 0) return;
-            
             clearTimeout(idleTimer); 
 
             let nextGesture = gestureQueue.shift();
@@ -117,30 +115,20 @@
                 
                 currentModel.traverse(n => {
                     if (n.isMesh && (n.name.toLowerCase().includes('cube') || n.name.toLowerCase().includes('box'))) n.visible = false;
-                    
                     if (n.isBone) {
                         const bName = n.name;
                         const bLower = bName.toLowerCase();
-                        
                         if (bLower.includes('jaw')) bones.jaw = n;
-                        
                         if (bName === 'mixamorig6RightArm') bones.r_shoulder = n;
                         if (bName === 'mixamorig6RightForeArm') bones.r_elbow = n;
                         if (bName === 'mixamorig6RightHand') bones.r_wrist = n;
-
                         if (bName === 'mixamorig6LeftArm') bones.l_shoulder = n;
                         if (bName === 'mixamorig6LeftForeArm') bones.l_elbow = n;
                         if (bName === 'mixamorig6LeftHand') bones.l_wrist = n;
-
                         const match = bLower.match(/(thumb|index|middle|ring|pinky)(\d)/);
                         if (match) {
-                            if (bLower.includes('right')) {
-                                bones.r_joints[match[0]] = n;
-                                bones.r_fingers.push(n);
-                            } else if (bLower.includes('left')) {
-                                bones.l_joints[match[0]] = n;
-                                bones.l_fingers.push(n);
-                            }
+                            if (bLower.includes('right')) { bones.r_joints[match[0]] = n; bones.r_fingers.push(n); } 
+                            else if (bLower.includes('left')) { bones.l_joints[match[0]] = n; bones.l_fingers.push(n); }
                         }
                     }
                 });
@@ -148,17 +136,11 @@
                 setTimeout(() => {
                     resetPose(0.1);
                     if (bones.jaw) bones.jaw.rotation.x = deg(90);
-                    
-                    if(bones.r_shoulder) {
-                        document.getElementById('subtitle').innerText = "Rhea: Σύστημα Έτοιμο!";
-                    } else {
-                        document.getElementById('subtitle').innerText = "Rhea: Σφάλμα ( mixamorig6 missing)";
-                    }
+                    if(bones.r_shoulder) document.getElementById('subtitle').innerText = "Rhea: Σύστημα Έτοιμο!";
                 }, 400);
             });
         }
 
-        // Αυτή η συνάρτηση κατεβάζει ΚΑΙ ΤΑ ΔΥΟ χέρια (χρησιμοποιείται μόνο όταν αδειάσει η ουρά)
         function resetPose(speed = 0.5) {
             if (!bones.r_shoulder) return;
             gsap.to(bones.r_shoulder.rotation, { x: deg(basePose.x), y: deg(basePose.y), z: deg(basePose.z), duration: speed });
@@ -173,30 +155,11 @@
             }
         }
 
-        function speakWord(word, total_time = 1.5) {
-            if (!bones.jaw) return;
-            const vowels = [...word.toLowerCase()].filter(c => VOWEL_OPEN[c]);
-            const step_time = total_time / (vowels.length || 1);
-            const tl = gsap.timeline();
-            vowels.forEach(v => {
-                tl.to(bones.jaw.rotation, { x: deg(VOWEL_OPEN[v]), duration: step_time / 2, ease: "sine.inOut" })
-                  .to(bones.jaw.rotation, { x: deg(90), duration: step_time / 2, ease: "sine.inOut" });
-            });
-        }
-
-        // --- Η ΔΙΟΡΘΩΜΕΝΗ ΛΟΓΙΚΗ ΕΝΑΛΛΑΓΗΣ ΓΙΑ ΤΟ ΑΡΙΣΤΕΡΟ ΧΕΡΙ ---
         function finalize_gesture() { 
             if (gestureQueue.length > 0) {
-                // Υπάρχει επόμενη λέξη! 
-                clearFingers(0.2); // Ισιώνει δάχτυλα
-                
-                // ΔΙΟΡΘΩΣΗ: Ισιώνει τους καρπούς (για να μην στραμπουλιούνται) 
+                clearFingers(0.2); 
                 if(bones.r_wrist) gsap.to(bones.r_wrist.rotation, { x: 0, y: 0, z: 0, duration: 0.2 });
                 if(bones.l_wrist) gsap.to(bones.l_wrist.rotation, { x: 0, y: 0, z: 0, duration: 0.2 });
-
-                // ΔΙΟΡΘΩΣΗ: Κατεβάζει το ΑΡΙΣΤΕΡΟ χέρι στην A-Pose!
-                // Έτσι, αν μόλις έκανε το "Ευχαριστώ", το αριστερό χέρι φεύγει σωστά, 
-                // ενώ το δεξί παραμένει ψηλά για να πάει στη νέα λέξη!
                 if(bones.l_shoulder) gsap.to(bones.l_shoulder.rotation, { x: deg(basePose.x), y: deg(-basePose.y), z: deg(-basePose.z), duration: 0.2 });
                 if(bones.l_elbow) gsap.to(bones.l_elbow.rotation, { x: 0, y: 0, z: 0, duration: 0.2 });
 
@@ -205,12 +168,10 @@
                     processQueue(); 
                 }, 200); 
             } else {
-                // Η ουρά άδειασε εντελώς. Περιμένει 0.5s ησυχίας και μετά κατεβάζει και τα δύο.
                 is_busy = false; 
                 idleTimer = setTimeout(() => {
                     if (gestureQueue.length === 0 && !is_busy) {
                         resetPose(0.5); 
-                        // ΠΡΟΣΘΗΚΗ ΑΠΟ ΤΗΝ ΛΟΓΙΚΗ ΤΗΣ v52 - Καθαρισμός οθόνης
                         displayBuffer = ""; 
                         document.getElementById('subtitle').innerText = "Ακούω...";
                     }
@@ -218,7 +179,6 @@
             }
         }
 
-        // --- CUSTOM POSITIONS ---
         function customFist(duration = 0.1) {
             if (!currentModel) return;
             if(bones.l_joints['thumb1']) gsap.to(bones.l_joints['thumb1'].rotation, {x: deg(14), y: deg(-14), z: deg(-27), duration: duration});
@@ -252,7 +212,7 @@
             if(j['index3']) gsap.to(j['index3'].rotation, {x: 0, y: 0, z: 0, duration: duration});
         }
 
-        // === ΚΙΝΗΣΕΙΣ (ΑΠΟΛΥΤΑ ΚΛΕΙΔΩΜΕΝΕΣ ΓΩΝΙΕΣ & LIP SYNC) ===
+        // === ΚΙΝΗΣΕΙΣ ===
 
         function gesture_efcharisto() {
             is_busy = true; 
@@ -436,7 +396,7 @@
             }, 600);
         }
 
-        // --- IMMORTAL MIC (v52 Logic) ---
+        // --- IMMORTAL MIC (v52 Logic) ΜΕ ΑΝΕΝΕΩΜΕΝΟ ΛΕΞΙΚΟ ---
         const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
         const micBtn = document.getElementById('mic-btn');
         const subtitle = document.getElementById('subtitle');
@@ -445,7 +405,7 @@
         if (SpeechRecognition) {
             recognition = new SpeechRecognition();
             recognition.lang = 'el-GR';
-            recognition.continuous = false; // Αποφυγή υπερευαισθησίας
+            recognition.continuous = false; 
             recognition.interimResults = false;
 
             recognition.onresult = (event) => {
@@ -453,13 +413,20 @@
                 displayBuffer += (displayBuffer === "" ? "" : " ") + text;
                 subtitle.innerText = "Είπες: " + displayBuffer;
 
-                const map = {
-                    'ευχαριστώ': 'efcharisto', 'καλημέρα': 'kalimera',
-                    'μεσημέρι': 'mesimeri', 'γεια': 'geia', 'όνομα': 'onoma'
+                // ΤΟ ΔΙΟΡΘΩΜΕΝΟ ΛΕΞΙΚΟ ΓΙΑ ΤΟ "ΟΝΟΜΑ" (Πιάνει όλους τους τόνους)
+                const keywords = {
+                    'efcharisto': ["ευχαριστώ", "ευχαριστω"],
+                    'kalimera': ["καλημέρα", "καλημερα"],
+                    'mesimeri': ["μεσημέρι", "μεσημερι", "καλό μεσημέρι", "καλο μεσημερι"],
+                    'geia': ["γεια", "γειά", "χαίρετε"],
+                    'onoma': ["όνομά", "όνομα", "ονομα", "ποιο είναι", "ποιο ειναι"]
                 };
 
-                Object.keys(map).forEach(key => {
-                    if (text.includes(key)) enqueueGesture(map[key]);
+                Object.entries(keywords).forEach(([gesture, words]) => {
+                    // Αν το κείμενο περιέχει ΕΣΤΩ ΚΑΙ ΜΙΑ από τις παραλλαγές
+                    if (words.some(w => text.includes(w))) {
+                        enqueueGesture(gesture);
+                    }
                 });
             };
 
