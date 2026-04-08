@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Web Avatar - Final Flow v56 (Locked & Perfect Dictionary)</title>
+    <title>Web Avatar - Final Flow (Rhea & Titan Support)</title>
     <style>
         body { margin: 0; overflow: hidden; background-color: #f0e6dc; font-family: 'Segoe UI', sans-serif; }
         #canvas-container { width: 100vw; height: 100vh; display: block; }
@@ -73,8 +73,6 @@
 
         let gestureQueue = [];
         let idleTimer = null; 
-        
-        // Απλή μνήμη οθόνης για το "Notepad Effect"
         let displayBuffer = ""; 
 
         function enqueueGesture(gestureName) {
@@ -119,12 +117,16 @@
                         const bName = n.name;
                         const bLower = bName.toLowerCase();
                         if (bLower.includes('jaw')) bones.jaw = n;
-                        if (bName === 'mixamorig6RightArm') bones.r_shoulder = n;
-                        if (bName === 'mixamorig6RightForeArm') bones.r_elbow = n;
-                        if (bName === 'mixamorig6RightHand') bones.r_wrist = n;
-                        if (bName === 'mixamorig6LeftArm') bones.l_shoulder = n;
-                        if (bName === 'mixamorig6LeftForeArm') bones.l_elbow = n;
-                        if (bName === 'mixamorig6LeftHand') bones.l_wrist = n;
+                        
+                        // ΥΠΟΣΤΗΡΙΞΗ ΚΑΙ ΓΙΑ ΤΑ ΔΥΟ ΜΟΝΤΕΛΑ (mixamorig6 = Rhea, mixamorig9 = Titan)
+                        if (bName === 'mixamorig6RightArm' || bName === 'mixamorig9RightArm') bones.r_shoulder = n;
+                        if (bName === 'mixamorig6RightForeArm' || bName === 'mixamorig9RightForeArm') bones.r_elbow = n;
+                        if (bName === 'mixamorig6RightHand' || bName === 'mixamorig9RightHand') bones.r_wrist = n;
+                        if (bName === 'mixamorig6LeftArm' || bName === 'mixamorig9LeftArm') bones.l_shoulder = n;
+                        if (bName === 'mixamorig6LeftForeArm' || bName === 'mixamorig9LeftForeArm') bones.l_elbow = n;
+                        if (bName === 'mixamorig6LeftHand' || bName === 'mixamorig9LeftHand') bones.l_wrist = n;
+                        
+                        // Τα δάχτυλα δούλευαν ήδη γιατί ο κώδικας ψάχνει απλά τις λέξεις (thumb, index κλπ)
                         const match = bLower.match(/(thumb|index|middle|ring|pinky)(\d)/);
                         if (match) {
                             if (bLower.includes('right')) { bones.r_joints[match[0]] = n; bones.r_fingers.push(n); } 
@@ -136,7 +138,11 @@
                 setTimeout(() => {
                     resetPose(0.1);
                     if (bones.jaw) bones.jaw.rotation.x = deg(90);
-                    if(bones.r_shoulder) document.getElementById('subtitle').innerText = "Rhea: Σύστημα Έτοιμο!";
+                    
+                    if(bones.r_shoulder) {
+                        let avatarName = file.includes('titan') ? 'Titan' : 'Rhea';
+                        document.getElementById('subtitle').innerText = avatarName + ": Σύστημα Έτοιμο!";
+                    }
                 }, 400);
             });
         }
@@ -396,7 +402,7 @@
             }, 600);
         }
 
-        // --- IMMORTAL MIC (v52 Logic) ΜΕ ΑΝΕΝΕΩΜΕΝΟ ΛΕΞΙΚΟ ---
+        // --- IMMORTAL MIC (v56 Logic) ---
         const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
         const micBtn = document.getElementById('mic-btn');
         const subtitle = document.getElementById('subtitle');
@@ -413,7 +419,6 @@
                 displayBuffer += (displayBuffer === "" ? "" : " ") + text;
                 subtitle.innerText = "Είπες: " + displayBuffer;
 
-                // ΤΟ ΔΙΟΡΘΩΜΕΝΟ ΛΕΞΙΚΟ ΓΙΑ ΤΟ "ΟΝΟΜΑ" (Πιάνει όλους τους τόνους)
                 const keywords = {
                     'efcharisto': ["ευχαριστώ", "ευχαριστω"],
                     'kalimera': ["καλημέρα", "καλημερα"],
@@ -423,7 +428,6 @@
                 };
 
                 Object.entries(keywords).forEach(([gesture, words]) => {
-                    // Αν το κείμενο περιέχει ΕΣΤΩ ΚΑΙ ΜΙΑ από τις παραλλαγές
                     if (words.some(w => text.includes(w))) {
                         enqueueGesture(gesture);
                     }
