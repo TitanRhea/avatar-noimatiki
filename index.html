@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Web Avatar - Final Flow v60 (Titan Mesimeri & Microphone Duplicate Fix)</title>
+    <title>Web Avatar - Final Flow v61 (Titan Pose Tuner)</title>
     <style>
         body { margin: 0; overflow: hidden; background-color: #f0e6dc; font-family: 'Segoe UI', sans-serif; }
         #canvas-container { width: 100vw; height: 100vh; display: block; }
@@ -25,12 +25,40 @@
         button.listening { background-color: #f44336; animation: pulse 1.5s infinite; }
         @keyframes pulse { 0% { opacity: 1; } 50% { opacity: 0.7; } 100% { opacity: 1; } }
         select { font-size: 16px; padding: 12px; border-radius: 10px; border: 1px solid #ddd; background: white;}
+
+        /* --- ΝΕΟ: CSS ΓΙΑ ΤΟ ΤΕΧΝΙΚΟ ΠΑΝΕΛ --- */
+        #tuner-panel { 
+            position: absolute; top: 20px; left: 20px; background: rgba(0,0,0,0.85); 
+            color: white; padding: 15px; border-radius: 10px; z-index: 1000; 
+            display: none; text-align: left; font-family: monospace; min-width: 280px;
+        }
+        #tuner-panel h3 { margin-top: 0; color: #4CAF50; text-align: center; font-family: 'Segoe UI', sans-serif;}
+        #tuner-panel label { display: block; margin-top: 5px; font-size: 14px;}
+        #tuner-panel input[type="range"] { width: 100%; margin: 5px 0 10px 0; cursor: pointer; }
+        #tuner-output { color: #4CAF50; font-weight: bold; background: #222; padding: 10px; border-radius: 5px; margin-top: 10px; }
+        #tune-btn { background-color: #2196F3; }
     </style>
 </head>
 <body>
 
     <div id="canvas-container"></div>
     
+    <!-- --- ΝΕΟ: HTML ΓΙΑ ΤΟ ΤΕΧΝΙΚΟ ΠΑΝΕΛ --- -->
+    <div id="tuner-panel">
+        <h3>🛠️ Titan Tuner</h3>
+        <label>Ώμος X: <span id="val_sh_x">45</span><br><input type="range" id="sh_x" min="-180" max="180" value="45" oninput="updateTuner()"></label>
+        <label>Ώμος Y: <span id="val_sh_y">-15</span><br><input type="range" id="sh_y" min="-180" max="180" value="-15" oninput="updateTuner()"></label>
+        <label>Ώμος Z: <span id="val_sh_z">-60</span><br><input type="range" id="sh_z" min="-180" max="180" value="-60" oninput="updateTuner()"></label>
+        <hr style="border-color:#444">
+        <label>Αγκώνας X: <span id="val_el_x">20</span><br><input type="range" id="el_x" min="-180" max="180" value="20" oninput="updateTuner()"></label>
+        <label>Αγκώνας Y: <span id="val_el_y">-38</span><br><input type="range" id="el_y" min="-180" max="180" value="-38" oninput="updateTuner()"></label>
+        <label>Αγκώνας Z: <span id="val_el_z">-110</span><br><input type="range" id="el_z" min="-180" max="180" value="-110" oninput="updateTuner()"></label>
+        
+        <div style="font-size: 12px; margin-top: 10px;">Αντέγραψε το παρακάτω:</div>
+        <div id="tuner-output">sh_main: { ... }<br>el_main: { ... }</div>
+        <button onclick="closeTuner()" style="margin-top:15px; width:100%; font-size:14px; padding:8px; background:#f44336;">Κλείσιμο</button>
+    </div>
+
     <div id="ui-layer">
         <div id="subtitle">Μικρόφωνο Κλειστό</div><br>
         <div class="controls">
@@ -39,6 +67,7 @@
                 <option value="titan.glb">Avatar: Titan (Άνδρας)</option>
             </select>
             <button id="mic-btn">🎙️ Ενεργοποίηση</button>
+            <button id="tune-btn" onclick="openTuner()">🛠️ Βρες τη Θέση</button>
         </div>
     </div>
 
@@ -75,6 +104,56 @@
         let gestureQueue = [];
         let idleTimer = null; 
         let displayBuffer = ""; 
+
+        // --- ΝΕΟ: JS ΓΙΑ ΤΟ ΤΕΧΝΙΚΟ ΠΑΝΕΛ ---
+        function openTuner() {
+            if (!bones.r_shoulder) return;
+            is_busy = true; // Σταματάμε το queue
+            clearTimeout(idleTimer);
+            document.getElementById('tuner-panel').style.display = 'block';
+            
+            // Παγώνουμε τον καρπό στην παλάμη του καλού μεσημεριού
+            if(bones.r_wrist) gsap.to(bones.r_wrist.rotation, { x: deg(-43), y: deg(-21), z: deg(-68), duration: 0.2 });
+            clearFingers();
+            
+            // Ενημερώνουμε την οθόνη με τις αρχικές τιμές των sliders
+            updateTuner();
+        }
+
+        function closeTuner() {
+            document.getElementById('tuner-panel').style.display = 'none';
+            is_busy = false;
+            resetPose(0.5);
+        }
+
+        function updateTuner() {
+            if (!bones.r_shoulder) return;
+            
+            let sx = document.getElementById('sh_x').value;
+            let sy = document.getElementById('sh_y').value;
+            let sz = document.getElementById('sh_z').value;
+            let ex = document.getElementById('el_x').value;
+            let ey = document.getElementById('el_y').value;
+            let ez = document.getElementById('el_z').value;
+
+            document.getElementById('val_sh_x').innerText = sx;
+            document.getElementById('val_sh_y').innerText = sy;
+            document.getElementById('val_sh_z').innerText = sz;
+            document.getElementById('val_el_x').innerText = ex;
+            document.getElementById('val_el_y').innerText = ey;
+            document.getElementById('val_el_z').innerText = ez;
+
+            // Σκοτώνουμε τα προηγούμενα animations και βάζουμε κατευθείαν τις τιμές
+            gsap.killTweensOf(bones.r_shoulder.rotation);
+            gsap.killTweensOf(bones.r_elbow.rotation);
+            
+            bones.r_shoulder.rotation.set(deg(sx), deg(sy), deg(sz));
+            bones.r_elbow.rotation.set(deg(ex), deg(ey), deg(ez));
+
+            document.getElementById('tuner-output').innerHTML = 
+                `sh_main: { x: deg(${sx}), y: deg(${sy}), z: deg(${sz}) }<br>` +
+                `el_main: { x: deg(${ex}), y: deg(${ey}), z: deg(${ez}) }`;
+        }
 
         function enqueueGesture(gestureName) {
             gestureQueue.push(gestureName);
@@ -368,8 +447,6 @@
             if(bones.r_wrist) gsap.to(bones.r_wrist.rotation, { x: 0, y: 0, z: 0, duration: 0.5 });
 
             setTimeout(() => {
-                // Εδώ φέρνουμε το χέρι του Titan πολύ πιο κοντά στο πρόσωπο
-                // Μειώνουμε το Χ του ώμου, λυγίζουμε περισσότερο τον αγκώνα και το Ζ του
                 let sh_main = isTitan ? { x: deg(45), y: deg(-15), z: deg(-60) } : { x: deg(60), y: deg(-10), z: deg(-43) };
                 let el_main = isTitan ? { x: deg(20), y: deg(-38), z: deg(-110) } : { x: deg(43), y: deg(-38), z: deg(-83) };
 
@@ -422,7 +499,6 @@
 
             recognition.onresult = (event) => {
                 const text = event.results[0][0].transcript.toLowerCase().trim();
-                // ΑΦΑΙΡΕΣΗ ΕΛΕΓΧΟΥ ΔΙΠΛΟΤΥΠΩΝ - ΠΑΝΤΑ ΠΡΟΣΘΕΣΗ ΚΑΙ ΕΠΕΞΕΡΓΑΣΙΑ
                 displayBuffer += (displayBuffer === "" ? "" : " ") + text;
                 subtitle.innerText = "Είπες: " + displayBuffer;
 
